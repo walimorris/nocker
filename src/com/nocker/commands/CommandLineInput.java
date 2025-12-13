@@ -2,9 +2,7 @@ package com.nocker.commands;
 
 import org.apache.commons.collections4.CollectionUtils;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 public class CommandLineInput {
     public String[] commandLineInput;
@@ -28,8 +26,9 @@ public class CommandLineInput {
         return this.commandLineInput[1].toLowerCase();
     }
 
-    public List<String> getArguments() {
-        List<String> arguments = new ArrayList<>();
+    // check arguments are not null
+    public Map<String, String> getArguments() {
+        Map<String, String> arguments = new HashMap<>();
         List<String> input = Arrays.asList(this.commandLineInput);
         if (CollectionUtils.isNotEmpty(input)) {
             // ignore namespace and command
@@ -40,10 +39,13 @@ public class CommandLineInput {
                 // -ax is a special argument with enhancements on the
                 // fully qualified commandLine input
                 if (arg.startsWith("--") && arg.contains("=")) {
+                    String argumentValue;
                     String argument;
-                    argument = arg.substring(2);
-                    argument = argument.split("=")[0];
-                    arguments.add(argument);
+                    String value;
+                    argumentValue = arg.substring(2);
+                    argument = argumentValue.split("=")[0];
+                    value = argumentValue.split("=")[1];
+                    arguments.put(argument, value);
                 }
             }
         }

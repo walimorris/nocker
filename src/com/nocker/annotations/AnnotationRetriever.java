@@ -4,6 +4,7 @@ import com.nocker.annotations.arguements.NockerArg;
 import com.nocker.annotations.commands.CommandType;
 import com.nocker.commands.CommandService;
 import com.nocker.commands.CommandLineInput;
+import com.nocker.commands.InvocationCommand;
 import org.apache.commons.collections4.CollectionUtils;
 
 import java.lang.annotation.Annotation;
@@ -25,9 +26,9 @@ public class AnnotationRetriever {
     }
 
     // retrieve the method
-    public static Method retrieve(CommandLineInput commandLineInput) {
+    public static InvocationCommand retrieve(CommandLineInput commandLineInput) {
         String command = commandLineInput.getCommand();
-        List<String> arguments = commandLineInput.getArguments();
+        Map<String, String> arguments = commandLineInput.getArguments();
 
         // filter 1: filter methods with command
         List<Method> methodsFromCommand = filterMethodsFromCommand(command);
@@ -37,32 +38,35 @@ public class AnnotationRetriever {
         return filterMethodsByExactParam(methodsFromParamCount, arguments);
     }
 
-    protected static Method filterMethodsByExactParam(List<Method> methods, List<String> arguments) {
-        // later we should add a tiebreaker annotation such as @Primary in case we have multiple
-        // winning methods due to deprecation. However, this should not be the case because nocker
-        // is Command -> argument driven. a Command such as "scan" should not have the same arguments.
-        // it can have same argument count, but only way the same argument should be available is in
-        // the case of deprecation or command updates
-        List<Method> winningMethods = new ArrayList<>();
-        Set<String> args = new HashSet<>(arguments);
+    protected static InvocationCommand filterMethodsByExactParam(List<Method> methods, Map<String, String> arguments) {
+        Method winningMethod = null;
+        Map<String, Class> parameters = null;
+        Set<String> args = new HashSet<>(arguments.keySet());
         for (Method method : methods) {
-            Set<String> parameters = getParameterNames(method);
-            if (parameters.containsAll(args)) {
-                winningMethods.add(method);
+            Map<String, Class> currentParameters = getParameterNamesAndTypes(method);
+            if (currentParameters.keySet().containsAll(args)) {
+                winningMethod = method;
+                parameters = currentParameters;
+                break;
             }
         }
-        return winningMethods.isEmpty() ? null : winningMethods.get(0);
+        if (winningMethod == null) {
+            return null;
+        }
+        Object[] commandArgs = convertToObjectArray(parameters, arguments);
+        return new InvocationCommand(winningMethod, commandArgs);
     }
 
-    private static Set<String> getParameterNames(Method method) {
-        Set<String> parameters = new HashSet<>();
+    private static Map<String, Class> getParameterNamesAndTypes(Method method) {
+        Map<String, Class> parameters = new LinkedHashMap<>();
         for (Parameter parameter : method.getParameters()) {
             for (Annotation annotation : parameter.getAnnotations()) {
                 Class<? extends Annotation> annotationType = annotation.annotationType();
                 if (annotationType.isAnnotationPresent(NockerArg.class)) {
                     try {
                         String name = (String) annotationType.getMethod("name").invoke(annotation);
-                        parameters.add(name);
+                        Class<?> type = parameter.getType();
+                        parameters.put(name, type);
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to read name from annotation", e);
                     }
@@ -115,5 +119,22 @@ public class AnnotationRetriever {
     private static Method[] getAllCommandMethods() {
         Class<CommandService> commandClass = CommandService.class;
         return commandClass.getMethods();
+    }
+
+    private static Object[] convertToObjectArray(Map<String, Class> parameters, Map<String, String> args) {
+        return parameters.entrySet()
+                .stream()
+                .map(entry -> convert(args.get(entry.getKey()), entry.getValue()))
+                .toArray(Object[]::new);
+    }
+
+    private static Object convert(String value, Class<?> type) {
+        if (type == String.class) {
+            return value;
+        }
+        if (type == int.class || type == Integer.class) {
+            return Integer.parseInt(value);
+        }
+        throw new IllegalArgumentException("Unsupported type: " + type);
     }
 }

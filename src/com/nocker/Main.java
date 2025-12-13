@@ -2,15 +2,26 @@ package com.nocker;
 
 import com.nocker.annotations.AnnotationRetriever;
 import com.nocker.commands.CommandLineInput;
+import com.nocker.commands.CommandService;
+import com.nocker.commands.InvocationCommand;
 
-import java.lang.reflect.Method;
+import java.lang.reflect.InvocationTargetException;
 
 public class Main {
     public static void main(String[] args) {
         String test = "nocker scan --host=localhost --port=8080 --aX";
         String[] args1 = test.split(" ");
         CommandLineInput commandLineInput = new CommandLineInput(args1);
-        Method method = AnnotationRetriever.retrieve(commandLineInput);
-        System.out.println(method.getName());
+        InvocationCommand invocationCommand = AnnotationRetriever.retrieve(commandLineInput);
+        invokeCommand(invocationCommand);
+    }
+
+    protected static void invokeCommand(InvocationCommand invocationCommand) {
+        CommandService commandService = new CommandService();
+        try {
+            invocationCommand.method().invoke(commandService, invocationCommand.args());
+        } catch (InvocationTargetException | IllegalAccessException exception) {
+            System.out.println(exception.getMessage());
+        }
     }
 }
