@@ -9,7 +9,7 @@ import java.lang.reflect.InvocationTargetException;
 
 public class Main {
     public static void main(String[] args) {
-        String test = "nocker scan --host=localhost --port=8080 -t 3000";
+        String test = "nocker scan --host=localhost --port=8080 -t 20000";
         String[] args1 = test.split(" ");
         CommandLineInput commandLineInput = new CommandLineInput(args1);
         InvocationCommand invocationCommand = AnnotationRetriever.retrieve(commandLineInput);
