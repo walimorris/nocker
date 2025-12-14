@@ -1,4 +1,4 @@
-package com.nocker.portscanner.annotations.commands;
+package com.nocker;
 
 import com.nocker.portscanner.Flag;
 import org.apache.commons.collections4.CollectionUtils;

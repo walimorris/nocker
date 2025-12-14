@@ -1,5 +1,6 @@
 package com.nocker.portscanner.annotations.commands;
 
+import com.nocker.annotations.CommandType;
 import com.nocker.annotations.NockerArg;
 
 import java.lang.annotation.ElementType;

@@ -1,4 +1,4 @@
-package com.nocker.portscanner.annotations.commands;
+package com.nocker;
 
 import java.lang.reflect.Method;
 

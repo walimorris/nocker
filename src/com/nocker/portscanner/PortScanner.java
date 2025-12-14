@@ -1,8 +1,9 @@
-package com.nocker.portscanner.annotations.commands;
+package com.nocker.portscanner;
 
-import com.nocker.portscanner.Flag;
 import com.nocker.portscanner.annotations.arguements.Host;
 import com.nocker.portscanner.annotations.arguements.Port;
+import com.nocker.InvocationCommand;
+import com.nocker.portscanner.annotations.commands.Scan;
 import com.nocker.portscanner.schedulers.PortScanScheduler;
 import com.nocker.portscanner.tasks.PortScanTask;
 import org.apache.commons.lang3.ObjectUtils;
@@ -15,7 +16,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Map;
 
-public class CommandService {
+public class PortScanner {
     private static final int MIN_PORT = 1;
     private static final int MAX_PORT = 65536;
 
@@ -25,9 +26,9 @@ public class CommandService {
     private int timeout;
     private int concurrency;
 
-    public CommandService() {}
+    public PortScanner() {}
 
-    public CommandService(InvocationCommand invocationCommand) {
+    public PortScanner(InvocationCommand invocationCommand) {
         initTimeout(invocationCommand);
         initConcurrency(invocationCommand);
     }

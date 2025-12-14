@@ -1,4 +1,4 @@
-package com.nocker.portscanner.annotations.commands;
+package com.nocker.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

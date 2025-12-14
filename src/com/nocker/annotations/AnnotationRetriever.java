@@ -1,9 +1,8 @@
 package com.nocker.annotations;
 
-import com.nocker.portscanner.annotations.commands.CommandType;
-import com.nocker.portscanner.annotations.commands.CommandService;
-import com.nocker.portscanner.annotations.commands.CommandLineInput;
-import com.nocker.portscanner.annotations.commands.InvocationCommand;
+import com.nocker.portscanner.PortScanner;
+import com.nocker.CommandLineInput;
+import com.nocker.InvocationCommand;
 import org.apache.commons.collections4.CollectionUtils;
 
 import java.lang.annotation.Annotation;
@@ -117,7 +116,7 @@ public class AnnotationRetriever {
     }
 
     private static Method[] getAllCommandMethods() {
-        Class<CommandService> commandClass = CommandService.class;
+        Class<PortScanner> commandClass = PortScanner.class;
         return commandClass.getMethods();
     }
 
