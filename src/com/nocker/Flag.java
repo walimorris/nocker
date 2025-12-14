@@ -4,7 +4,8 @@ import java.util.EnumSet;
 import java.util.Set;
 
 public enum Flag {
-    TIMEOUT("timeout", "-t");
+    TIMEOUT("timeout", "-t"),
+    CONCURRENCY("concurrency", "-c");
 
     private final String full;
     private final String abbr;
