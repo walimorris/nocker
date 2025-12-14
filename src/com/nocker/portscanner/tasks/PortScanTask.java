@@ -1,4 +1,4 @@
-package com.nocker.tasks;
+package com.nocker.portscanner.tasks;
 
 import java.io.IOException;
 import java.net.InetAddress;

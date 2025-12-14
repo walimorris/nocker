@@ -1,9 +1,9 @@
 package com.nocker;
 
 import com.nocker.annotations.AnnotationRetriever;
-import com.nocker.commands.CommandLineInput;
-import com.nocker.commands.CommandService;
-import com.nocker.commands.InvocationCommand;
+import com.nocker.portscanner.annotations.commands.CommandLineInput;
+import com.nocker.portscanner.annotations.commands.CommandService;
+import com.nocker.portscanner.annotations.commands.InvocationCommand;
 
 import java.lang.reflect.InvocationTargetException;
 

@@ -1,4 +1,4 @@
-package com.nocker.schedulers;
+package com.nocker.portscanner.schedulers;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;

@@ -1,6 +1,6 @@
-package com.nocker.commands;
+package com.nocker.portscanner.annotations.commands;
 
-import com.nocker.Flag;
+import com.nocker.portscanner.Flag;
 import org.apache.commons.collections4.CollectionUtils;
 
 import java.util.*;

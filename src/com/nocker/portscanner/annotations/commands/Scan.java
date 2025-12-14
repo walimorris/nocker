@@ -1,4 +1,6 @@
-package com.nocker.annotations.commands;
+package com.nocker.portscanner.annotations.commands;
+
+import com.nocker.annotations.NockerArg;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -6,7 +8,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.ANNOTATION_TYPE)
-public @interface CommandType {
-    String name();
+@Target(ElementType.METHOD)
+@NockerArg
+@CommandType(name = "scan")
+public @interface Scan {
 }

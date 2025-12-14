@@ -1,4 +1,6 @@
-package com.nocker.annotations.arguements;
+package com.nocker.portscanner.annotations.arguements;
+
+import com.nocker.annotations.NockerArg;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

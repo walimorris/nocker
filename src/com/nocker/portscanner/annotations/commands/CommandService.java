@@ -1,11 +1,10 @@
-package com.nocker.commands;
+package com.nocker.portscanner.annotations.commands;
 
-import com.nocker.Flag;
-import com.nocker.annotations.arguements.Host;
-import com.nocker.annotations.arguements.Port;
-import com.nocker.annotations.commands.Scan;
-import com.nocker.schedulers.PortScanScheduler;
-import com.nocker.tasks.PortScanTask;
+import com.nocker.portscanner.Flag;
+import com.nocker.portscanner.annotations.arguements.Host;
+import com.nocker.portscanner.annotations.arguements.Port;
+import com.nocker.portscanner.schedulers.PortScanScheduler;
+import com.nocker.portscanner.tasks.PortScanTask;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 

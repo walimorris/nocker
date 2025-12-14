@@ -1,4 +1,4 @@
-package com.nocker;
+package com.nocker.portscanner;
 
 import java.util.EnumSet;
 import java.util.Set;
