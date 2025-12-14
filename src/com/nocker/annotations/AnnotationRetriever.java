@@ -35,10 +35,11 @@ public class AnnotationRetriever {
         // filter 2: filter from param count
         List<Method> methodsFromParamCount = filterMethodsByParameterCount(methodsFromCommand, arguments.size());
         // filter 3: filter by exact param
-        return filterMethodsByExactParam(methodsFromParamCount, arguments);
+        return filterMethodsByExactParam(commandLineInput, methodsFromParamCount, arguments);
     }
 
-    protected static InvocationCommand filterMethodsByExactParam(List<Method> methods, Map<String, String> arguments) {
+    protected static InvocationCommand filterMethodsByExactParam(CommandLineInput commandLineInput, List<Method> methods,
+                                                                 Map<String, String> arguments) {
         Method winningMethod = null;
         Map<String, Class> parameters = null;
         Set<String> args = new HashSet<>(arguments.keySet());
@@ -54,7 +55,7 @@ public class AnnotationRetriever {
             return null;
         }
         Object[] commandArgs = convertToObjectArray(parameters, arguments);
-        return new InvocationCommand(winningMethod, commandArgs);
+        return new InvocationCommand(commandLineInput, winningMethod, commandArgs);
     }
 
     private static Map<String, Class> getParameterNamesAndTypes(Method method) {

@@ -2,5 +2,5 @@ package com.nocker.commands;
 
 import java.lang.reflect.Method;
 
-public record InvocationCommand(Method method, Object[] args) {
+public record InvocationCommand(CommandLineInput commandLineInput, Method method, Object[] args) {
 }

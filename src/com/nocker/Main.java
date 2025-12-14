@@ -9,7 +9,7 @@ import java.lang.reflect.InvocationTargetException;
 
 public class Main {
     public static void main(String[] args) {
-        String test = "nocker scan --host=localhost --port=8080 --aX";
+        String test = "nocker scan --host=localhost --port=8080 -t 3000";
         String[] args1 = test.split(" ");
         CommandLineInput commandLineInput = new CommandLineInput(args1);
         InvocationCommand invocationCommand = AnnotationRetriever.retrieve(commandLineInput);
@@ -17,7 +17,7 @@ public class Main {
     }
 
     protected static void invokeCommand(InvocationCommand invocationCommand) {
-        CommandService commandService = new CommandService();
+        CommandService commandService = new CommandService(invocationCommand);
         try {
             invocationCommand.method().invoke(commandService, invocationCommand.args());
         } catch (InvocationTargetException | IllegalAccessException exception) {
