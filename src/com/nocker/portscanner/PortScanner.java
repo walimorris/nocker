@@ -5,6 +5,7 @@ import com.nocker.portscanner.annotations.arguements.Host;
 import com.nocker.portscanner.annotations.arguements.Hosts;
 import com.nocker.portscanner.annotations.arguements.Port;
 import com.nocker.InvocationCommand;
+import com.nocker.portscanner.annotations.commands.CIDRScan;
 import com.nocker.portscanner.annotations.commands.Scan;
 import com.nocker.portscanner.schedulers.PortScanScheduler;
 import com.nocker.portscanner.tasks.PortScanTask;
@@ -54,18 +55,6 @@ public class PortScanner {
     }
 
     @Scan
-    public void scan(@Hosts CIDRWildcard hosts) {
-        if (isValidCIDRWildcard(hosts)) {
-            String normalizedAddress = normalizeCidrWildcardAddress(hosts.getValue());
-            normalizedAddress = incrementLastOctet(normalizedAddress);
-            while (normalizedAddress != null && !normalizedAddress.endsWith(".255")) {
-                scan(normalizedAddress);
-                normalizedAddress = incrementLastOctet(normalizedAddress);
-            }
-        }
-    }
-
-    @Scan
     public void scan(@Host String host) {
         InetAddress hostAddress = getHostAddress(host);
         if (ObjectUtils.isNotEmpty(hostAddress)) {
@@ -90,6 +79,18 @@ public class PortScanner {
         if (ObjectUtils.isNotEmpty(hostAddress)) {
             System.out.println("Scanning Host: " + host + " Port: " + port);
             connectPortImmediate(hostAddress, port);
+        }
+    }
+
+    @CIDRScan
+    public void cidrScan(@Hosts CIDRWildcard hosts) {
+        if (isValidCIDRWildcard(hosts)) {
+            String normalizedAddress = normalizeCidrWildcardAddress(hosts.getValue());
+            normalizedAddress = incrementLastOctet(normalizedAddress);
+            while (normalizedAddress != null && !normalizedAddress.endsWith(".255")) {
+                scan(normalizedAddress);
+                normalizedAddress = incrementLastOctet(normalizedAddress);
+            }
         }
     }
 
@@ -151,7 +152,7 @@ public class PortScanner {
     }
 
     private boolean containsValidOctets(String address) {
-        if (!address.contains("/") || !address.contains("\\.")) {
+        if (!address.contains("/") || !address.contains(".")) {
             return false; // no valid address or cidr range given
         }
         // 192.168.1.0/24
@@ -188,7 +189,7 @@ public class PortScanner {
         String[] octets = address.split("\\.");
         if (isValidIPOctets(octets)) {
             Integer[] ipOctets = convertToIntegerArray(octets);
-            int lastOctet = ipOctets[3]++;
+            int lastOctet = ++ipOctets[3];
             if (lastOctet > 255) {
                 throw new RuntimeException("invalid octet:  " + lastOctet);
             }

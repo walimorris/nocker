@@ -10,9 +10,10 @@ public class Main {
 //        String test = "nocker scan --host=scanme.nmap.org -t 5000 -c 200";
 //        String test = "nocker scan --host=localhost --port=8080 -t 1000";
 //        String test = "nocker scan --host=localhost -t 1000 --concurrency=155";
-        // below command will default to 5000 ms timeout becuse it's below the low bound for timeouts (1000ms)
+        // below command will default to 5000 ms timeout because it's below the low bound for timeouts (1000ms)
 //        String test = "nocker scan --hosts=localhost,scanme.nmap.org --port=8080 -t 500 --concurrency=125";
-        String test = "nocker scan --hosts=localhost,scanme.nmap.org -t 1000 -c 200";
+//        String test = "nocker scan --hosts=localhost,scanme.nmap.org -t 1000 -c 200";
+        String test = "nocker cidr-scan --hosts=192.168.1.0/24 -t 1000 -c 300";
         String[] args1 = test.split(" ");
         CommandLineInput commandLineInput = new CommandLineInput(args1);
         InvocationCommand invocationCommand = AnnotationRetriever.retrieve(commandLineInput);
