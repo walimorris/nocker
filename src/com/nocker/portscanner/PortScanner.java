@@ -65,9 +65,7 @@ public class PortScanner {
             for (int port = MIN_PORT; port <= MAX_PORT; port++) {
                 scanScheduler.submit(new PortScanTask(hostAddress, port, timeout));
             }
-            // call graceful shutdown of scan scheduler. All port scan tasks have
-            // been given to the scheduler. Scheduler will block until all task are
-            // complete, then attempt a graceful shutdown
+            // Scheduler will block until all task are complete, then attempt a graceful shutdown
             scanScheduler.shutdownAndWait();
             System.out.println("All ports scanned"); // extend this to report number of ports open
         }
@@ -82,6 +80,7 @@ public class PortScanner {
         }
     }
 
+    // too slow - possible performance boost processing threads & addresses concurrently
     @CIDRScan
     public void cidrScan(@Hosts CIDRWildcard hosts) {
         if (isValidCIDRWildcard(hosts)) {
