@@ -134,6 +134,16 @@ public class AnnotationRetriever {
         if (type == int.class || type == Integer.class) {
             return Integer.parseInt(value);
         }
+        if (type == List.class) {
+            if (isListCommaDelimited(value)) {
+                return Arrays.asList(value.split(","));
+            }
+        }
         throw new IllegalArgumentException("Unsupported type: " + type);
+    }
+
+    // probably could be a bit more robust
+    private static boolean isListCommaDelimited(String str) {
+        return str.trim().contains(".");
     }
 }

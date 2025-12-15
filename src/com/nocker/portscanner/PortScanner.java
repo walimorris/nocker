@@ -1,6 +1,7 @@
 package com.nocker.portscanner;
 
 import com.nocker.portscanner.annotations.arguements.Host;
+import com.nocker.portscanner.annotations.arguements.Hosts;
 import com.nocker.portscanner.annotations.arguements.Port;
 import com.nocker.InvocationCommand;
 import com.nocker.portscanner.annotations.commands.Scan;
@@ -14,6 +15,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.List;
 import java.util.Map;
 
 public class PortScanner {
@@ -31,6 +33,20 @@ public class PortScanner {
     public PortScanner(InvocationCommand invocationCommand) {
         initTimeout(invocationCommand);
         initConcurrency(invocationCommand);
+    }
+
+    @Scan
+    public void scan(@Hosts List<String> hosts, @Port int port) {
+        for (String host : hosts) {
+            scan(host, port);
+        }
+    }
+
+    @Scan
+    public void scan(@Hosts List<String> hosts) {
+        for (String host : hosts) {
+            scan(host);
+        }
     }
 
     @Scan
