@@ -1,5 +1,6 @@
 package com.nocker.annotations;
 
+import com.nocker.CIDRWildcard;
 import com.nocker.portscanner.PortScanner;
 import com.nocker.CommandLineInput;
 import com.nocker.InvocationCommand;
@@ -138,6 +139,9 @@ public class AnnotationRetriever {
             if (isListCommaDelimited(value)) {
                 return Arrays.asList(value.split(","));
             }
+        }
+        if (type == CIDRWildcard.class) {
+            return new CIDRWildcard(value);
         }
         throw new IllegalArgumentException("Unsupported type: " + type);
     }

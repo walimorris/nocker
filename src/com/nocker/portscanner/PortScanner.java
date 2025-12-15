@@ -1,5 +1,6 @@
 package com.nocker.portscanner;
 
+import com.nocker.CIDRWildcard;
 import com.nocker.portscanner.annotations.arguements.Host;
 import com.nocker.portscanner.annotations.arguements.Hosts;
 import com.nocker.portscanner.annotations.arguements.Port;
@@ -15,6 +16,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -24,6 +26,8 @@ public class PortScanner {
 
     private static final int DEFAULT_TIMEOUT = 5000;
     private static final int DEFAULT_CONCURRENCY = 100;
+
+    private static final String ALLOWED_CIDR = "/24";
 
     private int timeout;
     private int concurrency;
@@ -46,6 +50,18 @@ public class PortScanner {
     public void scan(@Hosts List<String> hosts) {
         for (String host : hosts) {
             scan(host);
+        }
+    }
+
+    @Scan
+    public void scan(@Hosts CIDRWildcard hosts) {
+        if (isValidCIDRWildcard(hosts)) {
+            String normalizedAddress = normalizeCidrWildcardAddress(hosts.getValue());
+            normalizedAddress = incrementLastOctet(normalizedAddress);
+            while (normalizedAddress != null && !normalizedAddress.endsWith(".255")) {
+                scan(normalizedAddress);
+                normalizedAddress = incrementLastOctet(normalizedAddress);
+            }
         }
     }
 
@@ -124,5 +140,86 @@ public class PortScanner {
         } else {
             this.concurrency = DEFAULT_CONCURRENCY;
         }
+    }
+
+    private boolean isValidCIDRWildcard(CIDRWildcard cidrWildcard) {
+        if (ObjectUtils.isEmpty(cidrWildcard)) {
+            System.out.println("Ensure command contains a valid CIDR range; type nocker scan help");
+        }
+        String cidrWildcardAddress = cidrWildcard.getValue();
+        return containsValidOctets(cidrWildcardAddress);
+    }
+
+    private boolean containsValidOctets(String address) {
+        if (!address.contains("/") || !address.contains("\\.")) {
+            return false; // no valid address or cidr range given
+        }
+        // 192.168.1.0/24
+        String normalizedAddress = normalizeCidrWildcardAddress(address);
+        String cidr = "/" + address.split("/")[1];
+        String[] octets = normalizedAddress.split("\\.");
+        return cidr.equals(ALLOWED_CIDR) && isValidIPOctets(octets);
+    }
+
+    private String normalizeCidrWildcardAddress(String address) {
+        return address.split("/")[0];
+    }
+
+    private boolean isValidIPOctets(String[] octets) {
+        if (octets == null || octets.length != 4) {
+            return false;
+        }
+        Integer[] octetsValues;
+        try {
+            octetsValues = convertToIntegerArray(octets);
+        } catch (NumberFormatException e) {
+            System.out.println("Ensure command contains valid octets; type nocker scan help");
+            return false;
+        }
+        for (int octetValue : octetsValues) {
+            if (octetValue < 0 || octetValue > 255) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String incrementLastOctet(String address) {
+        String[] octets = address.split("\\.");
+        if (isValidIPOctets(octets)) {
+            Integer[] ipOctets = convertToIntegerArray(octets);
+            int lastOctet = ipOctets[3]++;
+            if (lastOctet > 255) {
+                throw new RuntimeException("invalid octet:  " + lastOctet);
+            }
+            ipOctets[3] = lastOctet;
+            return convertIPOctetToAddress(ipOctets);
+        }
+        return null;
+    }
+
+    private Integer[] convertToIntegerArray(String[] objects) {
+        return Arrays.stream(objects)
+                .map(Integer::parseInt)
+                .toArray(Integer[]::new);
+    }
+
+    private String[] convertToStringArray(Integer[] objects) {
+        return Arrays.stream(objects)
+                .map(String::valueOf)
+                .toArray(String[]::new);
+    }
+
+    private String convertIPOctetToAddress(Integer[] ipOctets) {
+        StringBuilder address = new StringBuilder();
+        String[] ipStrOctets = convertToStringArray(ipOctets);
+        for (int i = 0; i < ipStrOctets.length; i++) {
+            if (i != ipStrOctets.length - 1) {
+                address.append(ipStrOctets[i]).append(".");
+            } else {
+                address.append(ipStrOctets[i]);
+            }
+        }
+        return address.toString();
     }
 }
