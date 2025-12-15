@@ -80,7 +80,8 @@ public class PortScanner {
         }
     }
 
-    // too slow - possible performance boost processing threads & addresses concurrently
+    // too slow - possible performance boost processing both hosts & addresses concurrently
+    // currently only processing ports concurrently, given a single hosts. too slow.
     @CIDRScan
     public void cidrScan(@Hosts CIDRWildcard hosts) {
         if (isValidCIDRWildcard(hosts)) {
