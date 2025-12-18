@@ -148,6 +148,6 @@ public class AnnotationRetriever {
 
     // probably could be a bit more robust
     private static boolean isListCommaDelimited(String str) {
-        return str.trim().contains(".");
+        return str.trim().contains(",");
     }
 }
