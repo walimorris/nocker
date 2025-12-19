@@ -13,8 +13,8 @@ public class Main {
         // below command will default to 5000 ms timeout because it's below the low bound for timeouts (1000ms)
 //        String test = "nocker scan --hosts=localhost,scanme.nmap.org --port=8080 -t 500 --concurrency=125";
 //        String test = "nocker scan --hosts=localhost,scanme.nmap.org -t 1000 -c 200";
-//        String test = "nocker cidr-scan --hosts=192.168.1.0/24 -t 1000 -c 300";
-        String test = "nocker scan --host=localhost --ports=0,1,8080,8081,8082,8083,8084";
+        String test = "nocker cidr-scan --hosts=192.168.1.254/24 -t 1000 -c 300";
+//        String test = "nocker scan --host=localhost --ports=0,1,8080,8081,8082,8083,8084";
         String[] args1 = test.split(" ");
         CommandLineInput commandLineInput = new CommandLineInput(args1);
         InvocationCommand invocationCommand = AnnotationRetriever.retrieve(commandLineInput);

@@ -11,14 +11,11 @@ import com.nocker.portscanner.annotations.commands.Scan;
 import com.nocker.portscanner.schedulers.PortScanScheduler;
 import com.nocker.portscanner.tasks.PortScanTask;
 import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.UnknownHostException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -27,11 +24,9 @@ public class PortScanner {
     private static final int MAX_PORT = 65536;
 
     // this max is random - justify this (or a higher/lower bound) with numbers
-    private static final int MAX_PORTS_UNTIL_CONCURRENCY_USAGE = 100;
+    private static final int MAX_PORTS_CONCURRENCY_USAGE = 100;
     private static final int DEFAULT_TIMEOUT = 5000;
     private static final int DEFAULT_CONCURRENCY = 100;
-
-    private static final String ALLOWED_CIDR = "/24";
 
     private int timeout;
     private int concurrency;
@@ -59,7 +54,7 @@ public class PortScanner {
 
     @Scan
     public void scan(@Host String host) {
-        InetAddress hostAddress = getHostAddress(host);
+        InetAddress hostAddress = PortScannerUtil.getHostAddress(host);
         if (ObjectUtils.isNotEmpty(hostAddress)) {
             logScanningHostMessage(host);
 
@@ -76,7 +71,7 @@ public class PortScanner {
 
     @Scan
     public void scan(@Host String host, @Port int port) {
-        InetAddress hostAddress = getHostAddress(host);
+        InetAddress hostAddress = PortScannerUtil.getHostAddress(host);
         if (ObjectUtils.isNotEmpty(hostAddress)) {
             System.out.println("Scanning Host: " + host + " Port: " + port);
             connectPortImmediate(hostAddress, port);
@@ -86,10 +81,10 @@ public class PortScanner {
     // allows range scan: nocker scan host=localhost ports=8080,8081,8082,8083,8084
     @Scan
     public void scan(@Host String host, @Ports List<String> ports) {
-        InetAddress hostAddress = getHostAddress(host);
+        InetAddress hostAddress = PortScannerUtil.getHostAddress(host);
         if (ObjectUtils.isNotEmpty(hostAddress)) {
             logScanningHostMessage(host);
-            if (ports.size() < MAX_PORTS_UNTIL_CONCURRENCY_USAGE) {
+            if (ports.size() < MAX_PORTS_CONCURRENCY_USAGE) {
                 for (String port : ports) {
                     if (isValidPortNumber(port)) {
                         connectPortImmediate(hostAddress, converPortToInteger(port));
@@ -112,17 +107,32 @@ public class PortScanner {
         }
     }
 
+    @Scan
+    public void scan(@Host String host, @Ports String ports) {}
+
+
     // too slow - possible performance boost processing both hosts & addresses concurrently
     // currently only processing ports concurrently, given a single hosts. too slow.
     @CIDRScan
     public void cidrScan(@Hosts CIDRWildcard hosts) {
-        if (isValidCIDRWildcard(hosts)) {
-            String normalizedAddress = normalizeCidrWildcardAddress(hosts.getValue());
-            normalizedAddress = incrementLastOctet(normalizedAddress);
-            while (normalizedAddress != null && !normalizedAddress.endsWith(".255")) {
-                scan(normalizedAddress);
-                normalizedAddress = incrementLastOctet(normalizedAddress);
+        if (hosts.isValidCIDRWildcard()) {
+            if (hosts.getOctets()[3] == 0) {
+                hosts.incrementLastOctet();
             }
+            PortScanScheduler scanScheduler = new PortScanScheduler(concurrency);
+            while (hosts.getOctets()[3] < 255) {
+                InetAddress address = PortScannerUtil.getHostAddress(hosts.getAddress());
+                if (ObjectUtils.isNotEmpty(address)) {
+                    logScanningHostMessage(hosts.getAddress());
+                    for (int port = MIN_PORT; port <= MAX_PORT; port++) {
+                        scanScheduler.submit(new PortScanTask(address, port, timeout));
+                    }
+                }
+                hosts.incrementLastOctet();
+            }
+            System.out.println("All ports scanned");
+            scanScheduler.shutdownAndWait();
+            System.out.println("Schedule closed.");
         }
     }
 
@@ -133,24 +143,6 @@ public class PortScanner {
         } catch (IOException e) {
             System.out.println("Port: " + port + " is closed");
         }
-    }
-
-    private InetAddress getHostAddress(String host) {
-        InetAddress hostAddress = null;
-        try {
-            hostAddress = isLocalHost(host) ? InetAddress.getLocalHost() : InetAddress.getByName(host);
-        } catch (UnknownHostException e) {
-            System.out.println("Host not found: " + host);
-        }
-        return hostAddress;
-    }
-
-    private boolean isLocalHost(String host) {
-        if (StringUtils.isNotBlank(host)) {
-            host = host.toLowerCase();
-            return host.contains("localhost");
-        }
-        return false;
     }
 
     private void initTimeout(InvocationCommand invocationCommand) {
@@ -173,87 +165,6 @@ public class PortScanner {
         } else {
             this.concurrency = DEFAULT_CONCURRENCY;
         }
-    }
-
-    private boolean isValidCIDRWildcard(CIDRWildcard cidrWildcard) {
-        if (ObjectUtils.isEmpty(cidrWildcard)) {
-            System.out.println("Ensure command contains a valid CIDR range; type nocker scan help");
-        }
-        String cidrWildcardAddress = cidrWildcard.getValue();
-        return containsValidOctets(cidrWildcardAddress);
-    }
-
-    private boolean containsValidOctets(String address) {
-        if (!address.contains("/") || !address.contains(".")) {
-            return false; // no valid address or cidr range given
-        }
-        // 192.168.1.0/24
-        String normalizedAddress = normalizeCidrWildcardAddress(address);
-        String cidr = "/" + address.split("/")[1];
-        String[] octets = normalizedAddress.split("\\.");
-        return cidr.equals(ALLOWED_CIDR) && isValidIPOctets(octets);
-    }
-
-    private String normalizeCidrWildcardAddress(String address) {
-        return address.split("/")[0];
-    }
-
-    private boolean isValidIPOctets(String[] octets) {
-        if (octets == null || octets.length != 4) {
-            return false;
-        }
-        Integer[] octetsValues;
-        try {
-            octetsValues = convertToIntegerArray(octets);
-        } catch (NumberFormatException e) {
-            System.out.println("Ensure command contains valid octets; type nocker scan help");
-            return false;
-        }
-        for (int octetValue : octetsValues) {
-            if (octetValue < 0 || octetValue > 255) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private String incrementLastOctet(String address) {
-        String[] octets = address.split("\\.");
-        if (isValidIPOctets(octets)) {
-            Integer[] ipOctets = convertToIntegerArray(octets);
-            int lastOctet = ++ipOctets[3];
-            if (lastOctet > 255) {
-                throw new RuntimeException("invalid octet:  " + lastOctet);
-            }
-            ipOctets[3] = lastOctet;
-            return convertIPOctetToAddress(ipOctets);
-        }
-        return null;
-    }
-
-    private Integer[] convertToIntegerArray(String[] objects) {
-        return Arrays.stream(objects)
-                .map(Integer::parseInt)
-                .toArray(Integer[]::new);
-    }
-
-    private String[] convertToStringArray(Integer[] objects) {
-        return Arrays.stream(objects)
-                .map(String::valueOf)
-                .toArray(String[]::new);
-    }
-
-    private String convertIPOctetToAddress(Integer[] ipOctets) {
-        StringBuilder address = new StringBuilder();
-        String[] ipStrOctets = convertToStringArray(ipOctets);
-        for (int i = 0; i < ipStrOctets.length; i++) {
-            if (i != ipStrOctets.length - 1) {
-                address.append(ipStrOctets[i]).append(".");
-            } else {
-                address.append(ipStrOctets[i]);
-            }
-        }
-        return address.toString();
     }
 
     // invalid port will return 0
