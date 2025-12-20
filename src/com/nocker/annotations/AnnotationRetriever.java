@@ -1,6 +1,7 @@
 package com.nocker.annotations;
 
 import com.nocker.CIDRWildcard;
+import com.nocker.PortWildcard;
 import com.nocker.portscanner.PortScanner;
 import com.nocker.CommandLineInput;
 import com.nocker.InvocationCommand;
@@ -9,6 +10,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.WildcardType;
 import java.util.*;
 
 /**
@@ -19,6 +21,7 @@ import java.util.*;
  * 4. maybe we should use something like @primary annotation for tiebreakers
  */
 public class AnnotationRetriever {
+    Class<?>[] ARG_TYPES = new Class[]{String.class, PortWildcard.class, WildcardType.class};
 
     private AnnotationRetriever() {
         // static
@@ -41,10 +44,10 @@ public class AnnotationRetriever {
                                                                  Map<String, String> arguments) {
         Method winningMethod = null;
         Map<String, Class> parameters = null;
-        Set<String> args = new HashSet<>(arguments.keySet());
+        Map<String, Class> args = getArgumentNamesAndTypes(arguments);
         for (Method method : methods) {
             Map<String, Class> currentParameters = getParameterNamesAndTypes(method);
-            if (currentParameters.keySet().containsAll(args)) {
+            if (currentParameters.equals(args)) {
                 winningMethod = method;
                 parameters = currentParameters;
                 break;
@@ -74,6 +77,19 @@ public class AnnotationRetriever {
             }
         }
         return parameters;
+    }
+
+    /**
+     * Arguments are valid strings. However, nocker has some arguments that should
+     * be parsed into it's nocker class type. This helps the Annotation Engine
+     * decide on the correct method, given methods that share the same arg names.
+     */
+    private static Map<String, Class> getArgumentNamesAndTypes(Map<String, String> arguments) {
+        Map<String, Class> result = new LinkedHashMap<>();
+        for (Map.Entry<String, String> entry : arguments.entrySet()) {
+            result.put(entry.getKey(), convert(entry.getValue()));
+        }
+        return result;
     }
 
     protected static List<Method> filterMethodsByParameterCount(List<Method> methods, int parameterCount) {
@@ -128,6 +144,24 @@ public class AnnotationRetriever {
                 .toArray(Object[]::new);
     }
 
+    private static Class convert(String value) {
+        try {
+            Integer.parseInt(value);
+            return int.class;
+        } catch (NumberFormatException e) {
+            if (isListCommaDelimited(value)) {
+                return List.class;
+            }
+            if (isValidCIDRWildcard(value)) {
+                return CIDRWildcard.class;
+            }
+            if (isValidPortWildcard(value)) {
+                return PortWildcard.class;
+            }
+            return String.class;
+        }
+    }
+
     private static Object convert(String value, Class<?> type) {
         if (type == String.class) {
             return value;
@@ -143,11 +177,32 @@ public class AnnotationRetriever {
         if (type == CIDRWildcard.class) {
             return new CIDRWildcard(value);
         }
+        if (type == PortWildcard.class) {
+            return new PortWildcard(value);
+        }
         throw new IllegalArgumentException("Unsupported type: " + type);
     }
 
     // probably could be a bit more robust
     private static boolean isListCommaDelimited(String str) {
         return str.trim().contains(",");
+    }
+
+    private static boolean isValidCIDRWildcard(String value) {
+        try {
+            new CIDRWildcard(value);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+        return true;
+    }
+
+    private static boolean isValidPortWildcard(String value) {
+        try {
+            new PortWildcard(value);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+        return true;
     }
 }

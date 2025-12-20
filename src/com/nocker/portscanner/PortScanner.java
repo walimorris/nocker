@@ -1,6 +1,7 @@
 package com.nocker.portscanner;
 
 import com.nocker.CIDRWildcard;
+import com.nocker.PortWildcard;
 import com.nocker.portscanner.annotations.arguements.Host;
 import com.nocker.portscanner.annotations.arguements.Hosts;
 import com.nocker.portscanner.annotations.arguements.Port;
@@ -86,18 +87,18 @@ public class PortScanner {
             logScanningHostMessage(host);
             if (ports.size() < MAX_PORTS_CONCURRENCY_USAGE) {
                 for (String port : ports) {
-                    if (isValidPortNumber(port)) {
-                        connectPortImmediate(hostAddress, converPortToInteger(port));
+                    if (PortScannerUtil.isValidPortNumber(port)) {
+                        connectPortImmediate(hostAddress, PortScannerUtil.converPortToInteger(port));
                     } else {
-                        logInvalidPortNumber(port);
+                        PortScannerUtil.logInvalidPortNumber(port);
                     }
                 }
             } else {
                 // refactor port scanning logic into a method
                 PortScanScheduler scanScheduler = new PortScanScheduler(concurrency);
                 for (String port : ports) {
-                    if (isValidPortNumber(port)) {
-                        int p = converPortToInteger(port);
+                    if (PortScannerUtil.isValidPortNumber(port)) {
+                        int p = PortScannerUtil.converPortToInteger(port);
                         scanScheduler.submit(new PortScanTask(hostAddress, p, timeout));
                     }
                 }
@@ -108,7 +109,9 @@ public class PortScanner {
     }
 
     @Scan
-    public void scan(@Host String host, @Ports String ports) {}
+    public void scan(@Host String host, @Ports PortWildcard ports) {
+        System.out.println("PortWildcard method chosen");
+    }
 
 
     // too slow - possible performance boost processing both hosts & addresses concurrently
@@ -165,28 +168,6 @@ public class PortScanner {
         } else {
             this.concurrency = DEFAULT_CONCURRENCY;
         }
-    }
-
-    // invalid port will return 0
-    private int converPortToInteger(String p) {
-        try {
-            return Integer.parseInt(p);
-        } catch (NumberFormatException e) {
-            logInvalidPortNumber(p);
-            return 0;
-        }
-    }
-
-    private boolean isValidPortNumber(String p) {
-        return isValidPortNumber(converPortToInteger(p));
-    }
-
-    private boolean isValidPortNumber(int p) {
-        return (p >= MIN_PORT && p <= MAX_PORT);
-    }
-
-    private void logInvalidPortNumber(String port) {
-        System.out.println("invalid port: " + port);
     }
 
     private void logScanningHostMessage(String host) {
