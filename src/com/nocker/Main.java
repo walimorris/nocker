@@ -23,7 +23,6 @@ public class Main {
 //        CommandLineInput commandLineInput = new CommandLineInput(args1);
 //        InvocationCommand invocationCommand = AnnotationRetriever.retrieve(commandLineInput);
 //        invokeCommand(invocationCommand);
-        Packet packet =
     }
 
     protected static void invokeCommand(InvocationCommand invocationCommand) {
