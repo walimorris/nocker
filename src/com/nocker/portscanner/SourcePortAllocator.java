@@ -19,7 +19,14 @@ public class SourcePortAllocator {
     private final int maxPort;
     private final AtomicInteger c;
 
+    private static final int MIN = 49152;
+    private static final int MAX = 65535;
+
     public SourcePortAllocator(int min, int max) {
+        if (min >= max || min < MIN || max > MAX) {
+            throw new IllegalArgumentException("Source port allocation must be in a valid range: " +
+                    MIN + " - " + MAX);
+        }
         this.minPort = min;
         this.maxPort = max;
         this.c = new AtomicInteger(min);
