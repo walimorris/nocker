@@ -1,6 +1,4 @@
-package com.nocker;
-
-import com.nocker.portscanner.PortScannerUtil;
+package com.nocker.portscanner;
 
 public class PortWildcard {
     private final String value;

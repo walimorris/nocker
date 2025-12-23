@@ -1,7 +1,5 @@
 package com.nocker.portscanner;
 
-import com.nocker.CIDRWildcard;
-import com.nocker.PortWildcard;
 import com.nocker.portscanner.annotations.arguements.Host;
 import com.nocker.portscanner.annotations.arguements.Hosts;
 import com.nocker.portscanner.annotations.arguements.Port;

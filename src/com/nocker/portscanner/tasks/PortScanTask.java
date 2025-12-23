@@ -1,9 +1,7 @@
 package com.nocker.portscanner.tasks;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.Socket;
+import java.net.*;
 
 public class PortScanTask implements Runnable {
     private final InetAddress host;

@@ -1,4 +1,4 @@
-package com.nocker;
+package com.nocker.portscanner;
 
 import static com.nocker.portscanner.PortScannerUtil.*;
 

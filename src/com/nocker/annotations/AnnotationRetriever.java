@@ -1,7 +1,7 @@
 package com.nocker.annotations;
 
-import com.nocker.CIDRWildcard;
-import com.nocker.PortWildcard;
+import com.nocker.portscanner.CIDRWildcard;
+import com.nocker.portscanner.PortWildcard;
 import com.nocker.portscanner.PortScanner;
 import com.nocker.CommandLineInput;
 import com.nocker.InvocationCommand;
