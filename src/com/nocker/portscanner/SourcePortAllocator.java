@@ -22,7 +22,7 @@ public class SourcePortAllocator {
 
     private SourcePortAllocator() {}
 
-    public static synchronized int next() {
+    public static int next() {
         return current.getAndUpdate(port -> port >= MAX ? MIN : port + 1);
     }
 }
