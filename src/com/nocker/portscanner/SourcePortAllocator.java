@@ -15,14 +15,29 @@ import java.util.concurrent.atomic.AtomicInteger;
  * {@code nocker} utilizes this range of ports.
  */
 public class SourcePortAllocator {
-    private static final int MIN = 49152;
-    private static final int MAX = 65535;
+    private final int minPort;
+    private final int maxPort;
+    private final AtomicInteger c;
 
-    private static final AtomicInteger current = new AtomicInteger(MIN);
+    public SourcePortAllocator(int min, int max) {
+        this.minPort = min;
+        this.maxPort = max;
+        this.c = new AtomicInteger(min);
+    }
 
-    private SourcePortAllocator() {}
+    public int getAndIncrement() {
+        return c.getAndUpdate(port -> port >= maxPort ? minPort : port + 1);
+    }
 
-    public static int next() {
-        return current.getAndUpdate(port -> port >= MAX ? MIN : port + 1);
+    public int getCurrent() {
+        return c.get();
+    }
+
+    public int getMinPort() {
+        return minPort;
+    }
+
+    public int getMaxPort() {
+        return maxPort;
     }
 }

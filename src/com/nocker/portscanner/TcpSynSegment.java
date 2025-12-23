@@ -7,6 +7,16 @@ public class TcpSynSegment {
     private final TcpPort sourcePort;
     private final TcpPort destinationPort;
 
+    /**
+     * Allocates a range of ephemeral ports to the underlying TcpSynSegment. Port ranges
+     * may need to consider other objects that may also use a range allocation, as to
+     * not conflict and cause syn scans to use the same source-destination port pairs.
+     *
+     * @see SourcePortAllocator#getMinPort()
+     * @see SourcePortAllocator#getMaxPort()
+     */
+    private final SourcePortAllocator sourcePortAllocator;
+
     private final boolean IS_SYN_SCAN = true; // sends syn without completing full TCP 3-way
     private final int SEQ_NUMBER = 100; // TCP initial sequence number that's acknowledged
     private final int ACK_NUMBER = 0;   // ACK field in tcp header - no ack for syn scan
@@ -17,9 +27,10 @@ public class TcpSynSegment {
     private final String TCP_PORT_SOURCE_NAME = "source_port";
     private final String TCP_PORT_DESTINATION_NAME = "destination_port";
 
-    public TcpSynSegment(short destinationPort) {
-        this.sourcePort = generateSourcePort();
+    public TcpSynSegment(short destinationPort, SourcePortAllocator sourcePortAllocator) {
         this.destinationPort = new TcpPort(destinationPort, TCP_PORT_DESTINATION_NAME);
+        this.sourcePortAllocator = sourcePortAllocator;
+        this.sourcePort = new TcpPort((short) sourcePortAllocator.getAndIncrement(), TCP_PORT_SOURCE_NAME);
     }
 
     public TcpPacket createTcpSynSegment() {
@@ -43,7 +54,7 @@ public class TcpSynSegment {
         return destinationPort;
     }
 
-    private TcpPort generateSourcePort() {
-        return new TcpPort((short) SourcePortAllocator.next(), TCP_PORT_SOURCE_NAME);
+    public SourcePortAllocator getSourcePortAllocator() {
+        return sourcePortAllocator;
     }
 }
