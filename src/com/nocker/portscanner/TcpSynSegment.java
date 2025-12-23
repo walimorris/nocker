@@ -11,9 +11,6 @@ public class TcpSynSegment {
      * Allocates a range of ephemeral ports to the underlying TcpSynSegment. Port ranges
      * may need to consider other objects that may also use a range allocation, as to
      * not conflict and cause syn scans to use the same source-destination port pairs.
-     *
-     * @see SourcePortAllocator#getMinPort()
-     * @see SourcePortAllocator#getMaxPort()
      */
     private final SourcePortAllocator sourcePortAllocator;
 
