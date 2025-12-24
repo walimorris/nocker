@@ -3,12 +3,12 @@ package com.nocker.portscanner.tasks;
 import java.io.IOException;
 import java.net.*;
 
-public class PortScanTask implements Runnable {
+public class PortScanSynAckTask implements Runnable {
     private final InetAddress host;
     private final int port;
     private final int timeout;
 
-    public PortScanTask(InetAddress host, int port, int timeout) {
+    public PortScanSynAckTask(InetAddress host, int port, int timeout) {
         this.host = host;
         this.port = port;
         this.timeout = timeout;

@@ -18,11 +18,11 @@ public class Main {
 //        String test = "nocker scan --hosts=localhost,scanme.nmap.org -t 1000 -c 200";
 //        String test = "nocker cidr-scan --hosts=192.168.1.253/24 -t 1000 -c 300";
 //        String test = "nocker scan --host=localhost --ports=0,1,8080,8081,8082,8083,8084";
-//        String test = "nocker scan --host=localhost --ports=8080-8180 -t 1000";
-//        String[] args1 = test.split(" ");
-//        CommandLineInput commandLineInput = new CommandLineInput(args1);
-//        InvocationCommand invocationCommand = AnnotationRetriever.retrieve(commandLineInput);
-//        invokeCommand(invocationCommand);
+        String test = "nocker scan --host=scanme.nmap.org --ports=8080-8180 -t 5000";
+        String[] args1 = test.split(" ");
+        CommandLineInput commandLineInput = new CommandLineInput(args1);
+        InvocationCommand invocationCommand = AnnotationRetriever.retrieve(commandLineInput);
+        invokeCommand(invocationCommand);
     }
 
     protected static void invokeCommand(InvocationCommand invocationCommand) {

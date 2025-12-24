@@ -7,16 +7,21 @@ import com.nocker.InvocationCommand;
 import com.nocker.portscanner.annotations.arguements.Ports;
 import com.nocker.portscanner.annotations.commands.CIDRScan;
 import com.nocker.portscanner.annotations.commands.Scan;
-import com.nocker.portscanner.schedulers.PortScanScheduler;
-import com.nocker.portscanner.tasks.PortScanTask;
+import com.nocker.portscanner.schedulers.PortScanSynAckScheduler;
+import com.nocker.portscanner.tasks.PortScanSynAckTask;
+import com.nocker.portscanner.tasks.PortScanSynTask;
 import org.apache.commons.lang3.ObjectUtils;
 
 import java.io.IOException;
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.List;
 import java.util.Map;
+
+import static com.nocker.portscanner.SourcePortAllocator.MAX;
+import static com.nocker.portscanner.SourcePortAllocator.MIN;
 
 public class PortScanner {
     private static final int MIN_PORT = 1;
@@ -58,9 +63,9 @@ public class PortScanner {
             logScanningHostMessage(host);
 
             // refactor port scheduler logic into a method
-            PortScanScheduler scanScheduler = new PortScanScheduler(concurrency);
+            PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
             for (int port = MIN_PORT; port <= MAX_PORT; port++) {
-                scanScheduler.submit(new PortScanTask(hostAddress, port, timeout));
+                scanScheduler.submit(new PortScanSynAckTask(hostAddress, port, timeout));
             }
             // Scheduler will block until all task are complete, then attempt a graceful shutdown
             scanScheduler.shutdownAndWait();
@@ -93,11 +98,11 @@ public class PortScanner {
                 }
             } else {
                 // refactor port scanning logic into a method
-                PortScanScheduler scanScheduler = new PortScanScheduler(concurrency);
+                PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
                 for (String port : ports) {
                     if (PortScannerUtil.isValidPortNumber(port)) {
                         int p = PortScannerUtil.converPortToInteger(port);
-                        scanScheduler.submit(new PortScanTask(hostAddress, p, timeout));
+                        scanScheduler.submit(new PortScanSynAckTask(hostAddress, p, timeout));
                     }
                 }
                 scanScheduler.shutdownAndWait();
@@ -109,6 +114,25 @@ public class PortScanner {
     @Scan
     public void scan(@Host String host, @Ports PortWildcard ports) {
         System.out.println("PortWildcard method chosen");
+
+        Inet4Address inet4Address = PortScannerUtil.getHostInet4Address(host);
+        if (ObjectUtils.isNotEmpty(inet4Address)) {
+            // for now, will allocate a single SourcePortAllocator as a range of source ports
+            SourcePortAllocator sourcePortAllocator = new SourcePortAllocator(MIN, MAX);
+            PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
+            int destinationPortLow = ports.getLowPort();
+            int destinationPortHigh = ports.getHighPort();
+            logScanningHostMessage(inet4Address.getHostAddress());
+            while (destinationPortLow <= destinationPortHigh) {
+                scanScheduler.submit(new PortScanSynTask(inet4Address, destinationPortLow,
+                        sourcePortAllocator.getAndIncrement(), timeout));
+                destinationPortLow++;
+            }
+            System.out.println("All ports scanned");
+            scanScheduler.shutdownAndWait();
+        } else {
+            PortScannerUtil.logInvalidHost(host);
+        }
     }
 
 
@@ -120,13 +144,13 @@ public class PortScanner {
             if (hosts.getOctets()[3] == 0) {
                 hosts.incrementLastOctet();
             }
-            PortScanScheduler scanScheduler = new PortScanScheduler(concurrency);
+            PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
             while (hosts.getOctets()[3] < 255) {
                 InetAddress address = PortScannerUtil.getHostAddress(hosts.getAddress());
                 if (ObjectUtils.isNotEmpty(address)) {
                     logScanningHostMessage(hosts.getAddress());
                     for (int port = MIN_PORT; port <= MAX_PORT; port++) {
-                        scanScheduler.submit(new PortScanTask(address, port, timeout));
+                        scanScheduler.submit(new PortScanSynAckTask(address, port, timeout));
                     }
                 }
                 hosts.incrementLastOctet();

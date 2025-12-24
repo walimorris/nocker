@@ -19,8 +19,8 @@ public class SourcePortAllocator {
     private final int maxPort;
     private final AtomicInteger c;
 
-    private static final int MIN = 49152;
-    private static final int MAX = 65535;
+    public static final int MIN = 49152;
+    public static final int MAX = 65535;
 
     public SourcePortAllocator(int min, int max) {
         if (min >= max || min < MIN || max > MAX) {

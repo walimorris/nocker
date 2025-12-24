@@ -2,6 +2,7 @@ package com.nocker.portscanner;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
@@ -39,7 +40,17 @@ public class PortScannerUtil {
         try {
             hostAddress = isLocalHost(host) ? InetAddress.getLocalHost() : InetAddress.getByName(host);
         } catch (UnknownHostException e) {
-            System.out.println("Host not found: " + host);
+            System.out.println("Error: " + e.getMessage());
+        }
+        return hostAddress;
+    }
+
+    public static Inet4Address getHostInet4Address(String host) {
+        Inet4Address hostAddress = null;
+        try {
+            hostAddress = isLocalHost(host) ? (Inet4Address) Inet4Address.getLocalHost() : (Inet4Address) Inet4Address.getByName(host);
+        } catch (UnknownHostException e) {
+            System.out.println("Error: " + e.getMessage());
         }
         return hostAddress;
     }
@@ -90,6 +101,14 @@ public class PortScannerUtil {
 
     public static void logInvalidPortNumber(String port) {
         System.out.println("invalid port: " + port);
+    }
+
+    public static void logInvalidHost(InetAddress inetAddress) {
+        System.out.println("Invalid host: " + inetAddress.getHostAddress());
+    }
+
+    public static void logInvalidHost(String host) {
+        System.out.println("Invalid host: " + host);
     }
 
     public static void logInvalidPortNumbers(String... ports) {
