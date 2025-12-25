@@ -1,6 +1,5 @@
 package com.nocker.portscanner;
 
-import com.nocker.Flag;
 import com.nocker.portscanner.annotation.arguements.Host;
 import com.nocker.portscanner.annotation.arguements.Hosts;
 import com.nocker.portscanner.annotation.arguements.Port;
@@ -29,26 +28,24 @@ import static com.nocker.portscanner.SourcePortAllocator.MAX;
 import static com.nocker.portscanner.SourcePortAllocator.MIN;
 
 public class PortScanner {
-    private static final int MIN_PORT = 1;
-    private static final int MAX_PORT = 65536;
-
-    // this max is random - justify this (or a higher/lower bound) with numbers
-    private static final int MAX_PORTS_CONCURRENCY_USAGE = 100;
-    private static final int DEFAULT_TIMEOUT = 5000;
-    private static final int DEFAULT_CONCURRENCY = 100;
-
-    private int timeout;
-    private int concurrency;
+    private final int timeout;
+    private final int concurrency;
     private final InvocationCommand invocationCommand;
     private final NockerFileWriter fileWriter;
 
-    public PortScanner(InvocationCommand invocationCommand, NockerFileWriter nockerFileWriter) {
-        // instead of initializing these values - they should be recognized in
-        // main and initialized in the constructor.
+    public static final int MIN_PORT = 1;
+    public static final int MAX_PORT = 65536;
+
+    // this max is random - justify this (or a higher/lower bound) with numbers
+    public static final int MAX_PORTS_CONCURRENCY_USAGE = 100;
+    public static final int DEFAULT_TIMEOUT = 5000;
+    public static final int DEFAULT_CONCURRENCY = 100;
+
+    public PortScanner(InvocationCommand invocationCommand, NockerFileWriter nockerFileWriter, int timeout, int concurrency) {
         this.invocationCommand = invocationCommand;
         this.fileWriter = nockerFileWriter;
-        initTimeout();
-        initConcurrency();
+        this.timeout = timeout >= 1000 && timeout <= 10000 ? timeout : DEFAULT_TIMEOUT;
+        this.concurrency = concurrency >= 2 && concurrency <= 300 ? concurrency : DEFAULT_CONCURRENCY;
     }
 
     @Scan
@@ -176,6 +173,18 @@ public class PortScanner {
         return invocationCommand;
     }
 
+    public NockerFileWriter getFileWriter() {
+        return fileWriter;
+    }
+
+    public int getConcurrency() {
+        return concurrency;
+    }
+
+    public int getTimeout() {
+        return timeout;
+    }
+
     private void connectPortImmediate(InetAddress hostAddress, int port, NockerFileWriter writer) {
         try (Socket socket = new Socket()) {
             socket.connect(new InetSocketAddress(hostAddress, port), timeout);
@@ -190,28 +199,6 @@ public class PortScanner {
             } else {
                 System.out.println("Port: " + port + " is closed");
             }
-        }
-    }
-
-    private void initTimeout() {
-        Map<String, String> flags = invocationCommand.getCommandLineInput().getFlags();
-        int proposedTimeout = Integer.parseInt(flags.getOrDefault(Flag.TIMEOUT.getFullName(),
-                String.valueOf(DEFAULT_TIMEOUT)));
-        if (proposedTimeout >= 1000 && proposedTimeout <= 10000) {
-            this.timeout = proposedTimeout;
-        } else {
-            this.timeout = DEFAULT_TIMEOUT;
-        }
-    }
-
-    private void initConcurrency() {
-        Map<String, String> flags = invocationCommand.getCommandLineInput().getFlags();
-        int proposedConcurrency = Integer.parseInt(flags.getOrDefault(Flag.CONCURRENCY.getFullName(),
-                String.valueOf(DEFAULT_CONCURRENCY)));
-        if (proposedConcurrency >= 2 && proposedConcurrency <= 300) {
-            this.concurrency = proposedConcurrency;
-        } else {
-            this.concurrency = DEFAULT_CONCURRENCY;
         }
     }
 

@@ -36,7 +36,9 @@ public class Main {
         Map<String, String> flags = invocationCommand.getCommandLineInput().getFlags();
         String outPath = flags.getOrDefault(Flag.OUT.getFullName(), null);
         NockerFileWriter nockerFileWriter = outPath != null ? new NockerFileWriter(outPath) : null;
-        PortScanner portScanner = new PortScanner(invocationCommand, nockerFileWriter);
+        int concurrency = initConcurrency(invocationCommand);
+        int timeout = initTimeout(invocationCommand);
+        PortScanner portScanner = new PortScanner(invocationCommand, nockerFileWriter, timeout, concurrency);
         try {
             invocationCommand.getMethod().invoke(portScanner, invocationCommand.getArgs());
         } catch (InvocationTargetException | IllegalAccessException exception) {
@@ -45,5 +47,15 @@ public class Main {
         if (nockerFileWriter != null) {
             nockerFileWriter.closeWriter();
         }
+    }
+
+    private static int initTimeout(InvocationCommand invocationCommand) {
+        Map<String, String> flags = invocationCommand.getCommandLineInput().getFlags();
+        return Integer.parseInt(flags.getOrDefault(Flag.TIMEOUT.getFullName(), String.valueOf(0)));
+    }
+
+    private static int initConcurrency(InvocationCommand invocationCommand) {
+        Map<String, String> flags = invocationCommand.getCommandLineInput().getFlags();
+        return Integer.parseInt(flags.getOrDefault(Flag.CONCURRENCY.getFullName(), String.valueOf(0)));
     }
 }
