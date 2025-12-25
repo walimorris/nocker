@@ -5,11 +5,16 @@ import com.nocker.portscanner.PortScanner;
 import com.nocker.portscanner.command.CommandLineInput;
 import com.nocker.portscanner.command.InvocationCommand;
 import com.nocker.writer.NockerFileWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Marker;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
 public class Main {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+
     public static void main(String[] args) {
         if (OperatingSystemUtils.isMacOs()) {
             //        String test = "nocker scan --host=scanme.nmap.org -t 5000 -c 200";
@@ -28,7 +33,7 @@ public class Main {
             invokeCommand(invocationCommand);
         } else {
             String os = OperatingSystemUtils.getOperatingSystem();
-            System.out.println(os + " is not currently supported");
+            LOGGER.warn(Marker.ANY_MARKER, "{} is not currently supported", os);
         }
     }
 
@@ -42,7 +47,10 @@ public class Main {
         try {
             invocationCommand.getMethod().invoke(portScanner, invocationCommand.getArgs());
         } catch (InvocationTargetException | IllegalAccessException exception) {
-            System.out.println(exception.getMessage());
+            LOGGER.error("Error invoking command method [{}#{}] with parameters {}: {}",
+                    invocationCommand.getMethod().getClass().getName(),
+                    invocationCommand.getMethod().getName(), invocationCommand.getMethod().getParameters(),
+                    exception.getStackTrace());
         }
         if (nockerFileWriter != null) {
             nockerFileWriter.closeWriter();

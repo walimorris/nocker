@@ -7,6 +7,7 @@ import com.nocker.portscanner.command.InvocationCommand;
 import com.nocker.portscanner.annotation.arguements.Ports;
 import com.nocker.portscanner.annotation.commands.CIDRScan;
 import com.nocker.portscanner.annotation.commands.Scan;
+import com.nocker.portscanner.scheduler.PortScanScheduler;
 import com.nocker.portscanner.scheduler.PortScanSynAckScheduler;
 import com.nocker.portscanner.tasks.PortScanSynAckTask;
 import com.nocker.portscanner.tasks.PortScanSynTask;
@@ -15,6 +16,8 @@ import com.nocker.portscanner.wildcard.PortWildcard;
 import com.nocker.writer.NockerFileWriter;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.time.DateUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.Inet4Address;
@@ -28,6 +31,8 @@ import static com.nocker.portscanner.SourcePortAllocator.MAX;
 import static com.nocker.portscanner.SourcePortAllocator.MIN;
 
 public class PortScanner {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PortScanner.class);
+
     private final int timeout;
     private final int concurrency;
     private final InvocationCommand invocationCommand;
@@ -66,7 +71,7 @@ public class PortScanner {
     public void scan(@Host String host) {
         InetAddress hostAddress = PortScannerUtil.getHostAddress(host);
         if (ObjectUtils.isNotEmpty(hostAddress)) {
-            logScanningHostMessage(host, fileWriter);
+            writeToFileScanningHostMessage(host, fileWriter);
 
             // refactor port scheduler logic into a method
             PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
@@ -75,7 +80,7 @@ public class PortScanner {
             }
             // Scheduler will block until all task are complete, then attempt a graceful shutdown
             scanScheduler.shutdownAndWait();
-            System.out.println("All ports scanned"); // extend this to report number of ports open
+            logAllPortsScanned(); // extend this to report number of ports open
         }
     }
 
@@ -83,11 +88,11 @@ public class PortScanner {
     public void scan(@Host String host, @Port int port) {
         InetAddress hostAddress = PortScannerUtil.getHostAddress(host);
         if (ObjectUtils.isNotEmpty(hostAddress)) {
-            logSimpleHostWithPortScan(host, port, fileWriter);
+            writeToFileSimpleHostWithPortScan(host, port, fileWriter);
             connectPortImmediate(hostAddress, port, fileWriter);
         } else {
             // should be sent to a logger
-            System.out.println("Scanning Host: " + host + " Port: " + port);
+            LOGGER.info("Scanning Host: {} Port: {}", host, port);
             connectPortImmediate(hostAddress, port, fileWriter);
         }
     }
@@ -97,7 +102,7 @@ public class PortScanner {
     public void scan(@Host String host, @Ports List<String> ports) {
         InetAddress hostAddress = PortScannerUtil.getHostAddress(host);
         if (ObjectUtils.isNotEmpty(hostAddress)) {
-            logScanningHostMessage(host, fileWriter);
+            writeToFileScanningHostMessage(host, fileWriter);
             if (ports.size() < MAX_PORTS_CONCURRENCY_USAGE) {
                 for (String port : ports) {
                     if (PortScannerUtil.isValidPortNumber(port)) {
@@ -116,7 +121,7 @@ public class PortScanner {
                     }
                 }
                 scanScheduler.shutdownAndWait();
-                System.out.println("All ports scanned");
+                logAllPortsScanned();
             }
         }
     }
@@ -130,14 +135,14 @@ public class PortScanner {
             PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
             int destinationPortLow = ports.getLowPort();
             int destinationPortHigh = ports.getHighPort();
-            logScanningHostMessage(inet4Address.getHostAddress(), fileWriter);
+            writeToFileScanningHostMessage(inet4Address.getHostAddress(), fileWriter);
             while (destinationPortLow <= destinationPortHigh) {
                 scanScheduler.submit(new PortScanSynTask(inet4Address, destinationPortLow,
                         sourcePortAllocator.getAndIncrement(), timeout));
                 destinationPortLow++;
             }
             scanScheduler.shutdownAndWait();
-            System.out.println("All ports scanned");
+            logAllPortsScanned();
         } else {
             PortScannerUtil.logInvalidHost(host);
         }
@@ -156,16 +161,16 @@ public class PortScanner {
             while (hosts.getOctets()[3] < 255) {
                 InetAddress address = PortScannerUtil.getHostAddress(hosts.getAddress());
                 if (ObjectUtils.isNotEmpty(address)) {
-                    logScanningHostMessage(hosts.getAddress(), fileWriter);
+                    writeToFileScanningHostMessage(hosts.getAddress(), fileWriter);
                     for (int port = MIN_PORT; port <= MAX_PORT; port++) {
                         scanScheduler.submit(new PortScanSynAckTask(address, port, timeout));
                     }
                 }
                 hosts.incrementLastOctet();
             }
-            System.out.println("All ports scanned");
+            logAllPortsScanned();
             scanScheduler.shutdownAndWait();
-            System.out.println("Schedule closed.");
+            logSchedulerClosed(scanScheduler);
         }
     }
 
@@ -191,26 +196,34 @@ public class PortScanner {
             if (writer != null) {
                 writer.write("[" + getTime() + "] " + "Port: " + socket.getPort() + " is open");
             } else {
-                System.out.println("Port: " + socket.getPort() + " is open");
+                LOGGER.info("Port: {} is open", socket.getPort());
             }
         } catch (IOException e) {
             if (writer != null) {
                 writer.write("[" + getTime() + "] " + "Port: " + port + " is closed");
             } else {
-                System.out.println("Port: " + port + " is closed");
+                LOGGER.info("Port: {} is closed", port);
             }
         }
     }
 
-    private void logScanningHostMessage(String host, NockerFileWriter writer) {
+    private void writeToFileScanningHostMessage(String host, NockerFileWriter writer) {
         if (writer != null) {
             writer.write("[" + getTime() + "] " + "Scanning Host: " + host);
             writer.write("[" + getTime() + "] " + "Config Settings: (timeout=" + timeout + ", concurrency=" + concurrency + "ms" + ")");
         }
     }
 
-    private void logSimpleHostWithPortScan(String host, int port, NockerFileWriter writer) {
+    private void writeToFileSimpleHostWithPortScan(String host, int port, NockerFileWriter writer) {
         writer.write("[" + getTime() + "] " + "Scanning Host: " + host + " Port: " + port);
+    }
+
+    private void logAllPortsScanned() {
+        LOGGER.info("All ports scanned");
+    }
+
+    private void logSchedulerClosed(PortScanScheduler scheduler) {
+        LOGGER.info("{} scheduler closed", scheduler.getClass().getName());
     }
 
     private LocalDateTime getTime() {

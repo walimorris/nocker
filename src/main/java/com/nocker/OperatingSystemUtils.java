@@ -1,14 +1,17 @@
 package com.nocker;
 
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class OperatingSystemUtils {
+    private static final Logger LOGGER = LoggerFactory.getLogger(OperatingSystemUtils.class);
 
     private OperatingSystemUtils() {}
 
     public static String getOperatingSystem() {
         String os = System.getProperty("os.name");
-        System.out.println(os);
+        LOGGER.info("Current OS: {}", os);
         return os;
     }
 

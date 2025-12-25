@@ -6,11 +6,15 @@ import org.pcap4j.core.PcapAddress;
 import org.pcap4j.core.PcapNativeException;
 import org.pcap4j.core.PcapNetworkInterface;
 import org.pcap4j.core.Pcaps;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.*;
 import java.util.Arrays;
 
 public class PortScannerUtil {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PortScannerUtil.class);
+
     private static final int MIN_PORT = 1;
     private static final int MAX_PORT = 65536;
 
@@ -43,7 +47,7 @@ public class PortScannerUtil {
         try {
             hostAddress = isLocalHost(host) ? InetAddress.getLocalHost() : InetAddress.getByName(host);
         } catch (UnknownHostException e) {
-            System.out.println("Error: " + e.getMessage());
+            LOGGER.error("Fatality, unknown host [{}]: {}", host, e.getMessage(), e);
         }
         return hostAddress;
     }
@@ -53,7 +57,7 @@ public class PortScannerUtil {
         try {
             hostAddress = isLocalHost(host) ? (Inet4Address) Inet4Address.getLocalHost() : (Inet4Address) Inet4Address.getByName(host);
         } catch (UnknownHostException e) {
-            System.out.println("Error: " + e.getMessage());
+            LOGGER.error("Fatality, unknown host [{}]: {}", host, e.getMessage(), e);
         }
         return hostAddress;
     }
@@ -87,8 +91,11 @@ public class PortScannerUtil {
             if (localAddress instanceof Inet4Address) {
                 return (Inet4Address) localAddress;
             }
-            throw new IllegalStateException("Resolved non-Ipv4 source address: " + destinationAddress);
+            LOGGER.error("Resolved non-IPv4 source address: {} ", destinationAddress);
+            throw new IllegalStateException("must be valid IPv4 address");
         } catch (Exception e) {
+            LOGGER.error("Failed to resolve source IP address from destination address [{}] via routing: ",
+                    destinationAddress);
             throw new RuntimeException("Failed to resolve source IP address via routing.");
         }
     }
@@ -110,7 +117,8 @@ public class PortScannerUtil {
                     continue;
                 }
                 if (sourceAddress.equals(currentAddress.getAddress())) {
-                    System.out.println("Source Address derived from : [" + nif.getName() + ", " + nif.getDescription() + "]");
+                    LOGGER.info("Source Address derived from network interface [{}, {}]",
+                            nif.getName(), nif.getDescription());
                     return nif;
                 }
             }
@@ -155,15 +163,15 @@ public class PortScannerUtil {
     }
 
     public static void logInvalidPortNumber(String port) {
-        System.out.println("invalid port: " + port);
+        LOGGER.warn("invalid port: {}", port);
     }
 
     public static void logInvalidHost(InetAddress inetAddress) {
-        System.out.println("Invalid host: " + inetAddress.getHostAddress());
+        LOGGER.warn("Invalid host: {}", inetAddress.getHostAddress());
     }
 
     public static void logInvalidHost(String host) {
-        System.out.println("Invalid host: " + host);
+        LOGGER.warn("Invalid host: {}", host);
     }
 
     public static void logInvalidPortNumbers(String... ports) {
@@ -175,10 +183,10 @@ public class PortScannerUtil {
                 invalidPortsStr.append(ports[i]).append(", ");
             }
         }
-        System.out.println("invalid ports: " + invalidPortsStr);
+        LOGGER.warn("Invalid ports: {}", invalidPortsStr);
     }
 
     public static void logInvalidPortRange(String range) {
-        System.out.println("invalid port range: " + range);
+        LOGGER.warn("Invalid port range: {}", range);
     }
 }

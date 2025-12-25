@@ -1,5 +1,8 @@
 package com.nocker.portscanner;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -15,6 +18,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * {@code nocker} utilizes this range of ports.
  */
 public class SourcePortAllocator {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SourcePortAllocator.class);
+
     private final int minPort;
     private final int maxPort;
     private final AtomicInteger c;
@@ -24,8 +29,9 @@ public class SourcePortAllocator {
 
     public SourcePortAllocator(int min, int max) {
         if (min >= max || min < MIN || max > MAX) {
-            throw new IllegalArgumentException("Source port allocation must be in a valid range: " +
-                    MIN + " - " + MAX);
+            LOGGER.error("Invalid port allocation range: [{} - {}] ", min, max);
+            throw new IllegalArgumentException("Source port allocation must be in a valid range: [" +
+                    MIN + " - " + MAX + "]");
         }
         this.minPort = min;
         this.maxPort = max;

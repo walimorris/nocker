@@ -6,6 +6,8 @@ import com.nocker.portscanner.PortScanner;
 import com.nocker.portscanner.command.CommandLineInput;
 import com.nocker.portscanner.command.InvocationCommand;
 import org.apache.commons.collections4.CollectionUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -20,6 +22,17 @@ import java.util.*;
  * 4. maybe we should use something like @primary annotation for tiebreakers
  */
 public class AnnotationRetriever {
+    private static final Logger LOGGER = LoggerFactory.getLogger(AnnotationRetriever.class);
+
+    private static final Class<?>[] validTypes = new Class[] {
+            String.class,
+            int.class,
+            Integer.class,
+            List.class,
+            CIDRWildcard.class,
+            PortWildcard.class
+    };
+
     private AnnotationRetriever() {
         // static
     }
@@ -68,7 +81,10 @@ public class AnnotationRetriever {
                         Class<?> type = parameter.getType();
                         parameters.put(name, type);
                     } catch (Exception e) {
-                        throw new RuntimeException("Failed to read name from annotation", e);
+                        LOGGER.error("Error parsing annotation, parameter name and type from given method: [{}#{}] with parameters {}: {}",
+                                method.getClass().getName(), method.getName(),
+                                method.getParameters(), e.getStackTrace());
+                        throw new RuntimeException(e);
                     }
                 }
             }
@@ -177,7 +193,8 @@ public class AnnotationRetriever {
         if (type == PortWildcard.class) {
             return new PortWildcard(value);
         }
-        throw new IllegalArgumentException("Unsupported type: " + type);
+        LOGGER.error("Unsupported system type: {}", type);
+        throw new IllegalArgumentException("must be one of valid types: " + Arrays.toString(validTypes));
     }
 
     // probably could be a bit more robust
