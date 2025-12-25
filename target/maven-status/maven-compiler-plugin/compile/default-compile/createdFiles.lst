@@ -14,6 +14,7 @@ com/nocker/portscanner/annotation/arguements/Hosts.class
 com/nocker/portscanner/annotation/arguements/Host.class
 com/nocker/portscanner/wildcard/CIDRWildcard.class
 com/nocker/portscanner/tasks/PortScanSynAckTask.class
+com/nocker/Flag.class
 com/nocker/portscanner/tasks/PortScanSynTask.class
 com/nocker/portscanner/scheduler/PortScanScheduler.class
 com/nocker/portscanner/annotation/arguements/Port.class
@@ -21,5 +22,5 @@ com/nocker/portscanner/scheduler/PortScanSynAckScheduler.class
 com/nocker/portscanner/annotation/arguements/Ports.class
 com/nocker/portscanner/annotation/commands/Scan.class
 com/nocker/portscanner/PortScannerUtil.class
+com/nocker/writer/NockerFileWriter.class
 com/nocker/portscanner/wildcard/PortWildcard.class
-com/nocker/portscanner/Flag.class

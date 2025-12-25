@@ -1,0 +1,2 @@
+[2025-12-25T02:16:51.506] Scanning Host: localhost Port: 8080
+[2025-12-25T02:16:51.531] Port: 8080 is open

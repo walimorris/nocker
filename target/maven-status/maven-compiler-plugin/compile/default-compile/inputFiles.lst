@@ -1,9 +1,9 @@
+/Users/walimorris/nocker/src/main/java/com/nocker/Flag.java
 /Users/walimorris/nocker/src/main/java/com/nocker/Main.java
 /Users/walimorris/nocker/src/main/java/com/nocker/OperatingSystemUtils.java
 /Users/walimorris/nocker/src/main/java/com/nocker/annotations/AnnotationRetriever.java
 /Users/walimorris/nocker/src/main/java/com/nocker/annotations/CommandType.java
 /Users/walimorris/nocker/src/main/java/com/nocker/annotations/NockerArg.java
-/Users/walimorris/nocker/src/main/java/com/nocker/portscanner/Flag.java
 /Users/walimorris/nocker/src/main/java/com/nocker/portscanner/PortScanner.java
 /Users/walimorris/nocker/src/main/java/com/nocker/portscanner/PortScannerUtil.java
 /Users/walimorris/nocker/src/main/java/com/nocker/portscanner/SourcePortAllocator.java
@@ -23,3 +23,4 @@
 /Users/walimorris/nocker/src/main/java/com/nocker/portscanner/tasks/PortScanSynTask.java
 /Users/walimorris/nocker/src/main/java/com/nocker/portscanner/wildcard/CIDRWildcard.java
 /Users/walimorris/nocker/src/main/java/com/nocker/portscanner/wildcard/PortWildcard.java
+/Users/walimorris/nocker/src/main/java/com/nocker/writer/NockerFileWriter.java

@@ -1,5 +1,6 @@
 package com.nocker.portscanner;
 
+import com.nocker.Flag;
 import com.nocker.portscanner.annotation.arguements.Host;
 import com.nocker.portscanner.annotation.arguements.Hosts;
 import com.nocker.portscanner.annotation.arguements.Port;
@@ -12,15 +13,17 @@ import com.nocker.portscanner.tasks.PortScanSynAckTask;
 import com.nocker.portscanner.tasks.PortScanSynTask;
 import com.nocker.portscanner.wildcard.CIDRWildcard;
 import com.nocker.portscanner.wildcard.PortWildcard;
+import com.nocker.writer.NockerFileWriter;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.time.DateUtils;
 
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.*;
 
 import static com.nocker.portscanner.SourcePortAllocator.MAX;
 import static com.nocker.portscanner.SourcePortAllocator.MIN;
@@ -36,12 +39,18 @@ public class PortScanner {
 
     private int timeout;
     private int concurrency;
+    private final String outFilePath;
+    private final InvocationCommand invocationCommand;
+    private final NockerFileWriter fileWriter;
 
-    public PortScanner() {}
-
-    public PortScanner(InvocationCommand invocationCommand) {
-        initTimeout(invocationCommand);
-        initConcurrency(invocationCommand);
+    public PortScanner(InvocationCommand invocationCommand, NockerFileWriter nockerFileWriter) {
+        // instead of initializing these values - they should be recognized in
+        // main and initialized in the constructor.
+        this.invocationCommand = invocationCommand;
+        this.fileWriter = nockerFileWriter;
+        initTimeout();
+        initConcurrency();
+        this.outFilePath = initOutFile();
     }
 
     @Scan
@@ -62,7 +71,7 @@ public class PortScanner {
     public void scan(@Host String host) {
         InetAddress hostAddress = PortScannerUtil.getHostAddress(host);
         if (ObjectUtils.isNotEmpty(hostAddress)) {
-            logScanningHostMessage(host);
+            logScanningHostMessage(host, fileWriter);
 
             // refactor port scheduler logic into a method
             PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
@@ -79,8 +88,12 @@ public class PortScanner {
     public void scan(@Host String host, @Port int port) {
         InetAddress hostAddress = PortScannerUtil.getHostAddress(host);
         if (ObjectUtils.isNotEmpty(hostAddress)) {
+            logSimpleHostWithPortScan(host, port, fileWriter);
+            connectPortImmediate(hostAddress, port, fileWriter);
+        } else {
+            // should be sent to a logger
             System.out.println("Scanning Host: " + host + " Port: " + port);
-            connectPortImmediate(hostAddress, port);
+            connectPortImmediate(hostAddress, port, fileWriter);
         }
     }
 
@@ -89,11 +102,11 @@ public class PortScanner {
     public void scan(@Host String host, @Ports List<String> ports) {
         InetAddress hostAddress = PortScannerUtil.getHostAddress(host);
         if (ObjectUtils.isNotEmpty(hostAddress)) {
-            logScanningHostMessage(host);
+            logScanningHostMessage(host, fileWriter);
             if (ports.size() < MAX_PORTS_CONCURRENCY_USAGE) {
                 for (String port : ports) {
                     if (PortScannerUtil.isValidPortNumber(port)) {
-                        connectPortImmediate(hostAddress, PortScannerUtil.converPortToInteger(port));
+                        connectPortImmediate(hostAddress, PortScannerUtil.converPortToInteger(port), fileWriter);
                     } else {
                         PortScannerUtil.logInvalidPortNumber(port);
                     }
@@ -122,7 +135,7 @@ public class PortScanner {
             PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
             int destinationPortLow = ports.getLowPort();
             int destinationPortHigh = ports.getHighPort();
-            logScanningHostMessage(inet4Address.getHostAddress());
+            logScanningHostMessage(inet4Address.getHostAddress(), fileWriter);
             while (destinationPortLow <= destinationPortHigh) {
                 scanScheduler.submit(new PortScanSynTask(inet4Address, destinationPortLow,
                         sourcePortAllocator.getAndIncrement(), timeout));
@@ -148,7 +161,7 @@ public class PortScanner {
             while (hosts.getOctets()[3] < 255) {
                 InetAddress address = PortScannerUtil.getHostAddress(hosts.getAddress());
                 if (ObjectUtils.isNotEmpty(address)) {
-                    logScanningHostMessage(hosts.getAddress());
+                    logScanningHostMessage(hosts.getAddress(), fileWriter);
                     for (int port = MIN_PORT; port <= MAX_PORT; port++) {
                         scanScheduler.submit(new PortScanSynAckTask(address, port, timeout));
                     }
@@ -161,16 +174,32 @@ public class PortScanner {
         }
     }
 
-    private void connectPortImmediate(InetAddress hostAddress, int port) {
+    public InvocationCommand getInvocationCommand() {
+        return invocationCommand;
+    }
+
+    public String getOutFilePath() {
+        return outFilePath;
+    }
+
+    private void connectPortImmediate(InetAddress hostAddress, int port, NockerFileWriter writer) {
         try (Socket socket = new Socket()) {
             socket.connect(new InetSocketAddress(hostAddress, port), timeout);
-            System.out.println("Port: " + socket.getPort() + " is open");
+            if (writer != null) {
+                writer.write("[" + getTime() + "] " + "Port: " + socket.getPort() + " is open");
+            } else {
+                System.out.println("Port: " + socket.getPort() + " is open");
+            }
         } catch (IOException e) {
-            System.out.println("Port: " + port + " is closed");
+            if (writer != null) {
+                writer.write("[" + getTime() + "] " + "Port: " + port + " is closed");
+            } else {
+                System.out.println("Port: " + port + " is closed");
+            }
         }
     }
 
-    private void initTimeout(InvocationCommand invocationCommand) {
+    private void initTimeout() {
         Map<String, String> flags = invocationCommand.getCommandLineInput().getFlags();
         int proposedTimeout = Integer.parseInt(flags.getOrDefault(Flag.TIMEOUT.getFullName(),
                 String.valueOf(DEFAULT_TIMEOUT)));
@@ -181,7 +210,7 @@ public class PortScanner {
         }
     }
 
-    private void initConcurrency(InvocationCommand invocationCommand) {
+    private void initConcurrency() {
         Map<String, String> flags = invocationCommand.getCommandLineInput().getFlags();
         int proposedConcurrency = Integer.parseInt(flags.getOrDefault(Flag.CONCURRENCY.getFullName(),
                 String.valueOf(DEFAULT_CONCURRENCY)));
@@ -192,8 +221,23 @@ public class PortScanner {
         }
     }
 
-    private void logScanningHostMessage(String host) {
-        System.out.println("Scanning Host: " + host);
-        System.out.println("config settings: timeout: " + timeout + " concurrency: " + concurrency);
+    private String initOutFile() {
+        Map<String, String> flags = invocationCommand.getCommandLineInput().getFlags();
+        return flags.getOrDefault(Flag.OUT.getFullName(), null);
+    }
+
+    private void logScanningHostMessage(String host, NockerFileWriter writer) {
+        if (writer != null) {
+            writer.write("[" + getTime() + "] " + "Scanning Host: " + host);
+            writer.write("[" + getTime() + "] " + "Config Settings: (timeout=" + timeout + ", concurrency=" + concurrency + "ms" + ")");
+        }
+    }
+
+    private void logSimpleHostWithPortScan(String host, int port, NockerFileWriter writer) {
+        writer.write("[" + getTime() + "] " + "Scanning Host: " + host + " Port: " + port);
+    }
+
+    private LocalDateTime getTime() {
+        return DateUtils.toLocalDateTime(new Date(), TimeZone.getDefault());
     }
 }
