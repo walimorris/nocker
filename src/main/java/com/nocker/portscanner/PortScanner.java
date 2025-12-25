@@ -39,7 +39,6 @@ public class PortScanner {
 
     private int timeout;
     private int concurrency;
-    private final String outFilePath;
     private final InvocationCommand invocationCommand;
     private final NockerFileWriter fileWriter;
 
@@ -50,7 +49,6 @@ public class PortScanner {
         this.fileWriter = nockerFileWriter;
         initTimeout();
         initConcurrency();
-        this.outFilePath = initOutFile();
     }
 
     @Scan
@@ -178,10 +176,6 @@ public class PortScanner {
         return invocationCommand;
     }
 
-    public String getOutFilePath() {
-        return outFilePath;
-    }
-
     private void connectPortImmediate(InetAddress hostAddress, int port, NockerFileWriter writer) {
         try (Socket socket = new Socket()) {
             socket.connect(new InetSocketAddress(hostAddress, port), timeout);
@@ -219,11 +213,6 @@ public class PortScanner {
         } else {
             this.concurrency = DEFAULT_CONCURRENCY;
         }
-    }
-
-    private String initOutFile() {
-        Map<String, String> flags = invocationCommand.getCommandLineInput().getFlags();
-        return flags.getOrDefault(Flag.OUT.getFullName(), null);
     }
 
     private void logScanningHostMessage(String host, NockerFileWriter writer) {
