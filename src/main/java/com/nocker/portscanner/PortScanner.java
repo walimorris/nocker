@@ -115,8 +115,6 @@ public class PortScanner {
 
     @Scan
     public void scan(@Host String host, @Ports PortWildcard ports) {
-        System.out.println("PortWildcard method chosen");
-
         Inet4Address inet4Address = PortScannerUtil.getHostInet4Address(host);
         if (ObjectUtils.isNotEmpty(inet4Address)) {
             // for now, will allocate a single SourcePortAllocator as a range of source ports
