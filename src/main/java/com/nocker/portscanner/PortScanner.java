@@ -80,16 +80,14 @@ public class PortScanner {
         Inet4Address hostAddress = PortScannerUtil.getHostInet4Address(host);
         if (ObjectUtils.isNotEmpty(hostAddress)) {
             writeToFileScanningHostMessage(host, fileWriter);
-
-            // refactor port scheduler logic into a method
             PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
             logSchedulerStarted(scanScheduler);
             for (int port = MIN_PORT; port <= MAX_PORT; port++) {
                 submitTask(scanScheduler, hostAddress, port);
             }
-            // Scheduler will block until all task are complete, then attempt a graceful shutdown
-            scanScheduler.shutdownAndWait();
-            logAllPortsScanned(); // extend this to report number of ports open
+            List<PortScanResult> results = scanScheduler.shutdownAndCollect(PortScanResult.class);
+            String resultsJson = PortScannerUtil.jsonifyPortscanResults(results);
+            logPortScanResultsJson(resultsJson);
         }
     }
 
@@ -130,8 +128,9 @@ public class PortScanner {
                         submitTask(scanScheduler, hostAddress, p);
                     }
                 }
-                scanScheduler.shutdownAndWait();
-                logAllPortsScanned();
+                List<PortScanResult> results = scanScheduler.shutdownAndCollect(PortScanResult.class);
+                String resultsJson = PortScannerUtil.jsonifyPortscanResults(results);
+                logPortScanResultsJson(resultsJson);
             }
         }
     }
@@ -149,8 +148,9 @@ public class PortScanner {
                 submitTask(scanScheduler, inet4Address, destinationPortLow);
                 destinationPortLow++;
             }
-            scanScheduler.shutdownAndWait();
-            logAllPortsScanned();
+            List<PortScanResult> results = scanScheduler.shutdownAndCollect(PortScanResult.class);
+            String resultsJson = PortScannerUtil.jsonifyPortscanResults(results);
+            logPortScanResultsJson(resultsJson);
             logSchedulerClosed(scanScheduler);
         } else {
             PortScannerUtil.logInvalidHost(host);
@@ -178,8 +178,9 @@ public class PortScanner {
                 }
                 hosts.incrementLastOctet();
             }
-            logAllPortsScanned();
-            scanScheduler.shutdownAndWait();
+            List<PortScanResult> results = scanScheduler.shutdownAndCollect(PortScanResult.class);
+            String resultsJson = PortScannerUtil.jsonifyPortscanResults(results);
+            logPortScanResultsJson(resultsJson);
             logSchedulerClosed(scanScheduler);
         }
     }
@@ -237,6 +238,10 @@ public class PortScanner {
 
     private void writeToFileSimpleHostWithPortScan(String host, int port, NockerFileWriter writer) {
         writer.write("[" + getTime() + "] " + "Scanning Host: " + host + " Port: " + port);
+    }
+
+    private void logPortScanResultsJson(String results) {
+        LOGGER.info(results);
     }
 
     private void logAllPortsScanned() {

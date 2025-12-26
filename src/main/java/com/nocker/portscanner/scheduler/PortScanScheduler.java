@@ -1,22 +1,32 @@
 package com.nocker.portscanner.scheduler;
 
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 
 public interface PortScanScheduler {
 
     /**
-     * Submits a runnable task to the scheduler.
+     * Submits a task for execution to the scheduler's executor service.
+     * The task is represented as a {@link Callable} that can return a result upon completion.
+     * Submitted tasks are tracked by the scheduler for later processing or result retrieval.
      *
-     * @param task a {@link Runnable}
+     * @param <T> the type of the result produced by the task
+     * @param task the task to submit for execution, implemented as a {@link Callable}
      */
-    void submit(Runnable task);
+    <T> void submit(Callable<T> task);
 
     /**
-     * Graceful shutdown of any concurrent executor service utilized
-     * by the scheduler.
+     * Shuts down the scheduler's executor service and collects the results of all submitted tasks
+     * that match the specified result type. The executor service will not accept new tasks after
+     * the shutdown is initiated.
+     *
+     * @param <T> the type of results to collect
+     * @param resultType the class type of results to be collected
+     * @return a list of results of type {@code T} from the completed tasks
      */
-    void shutdownAndWait();
+    <T> List<T> shutdownAndCollect(Class<T> resultType);
 
     /**
      * Retrieves the unique identifier of the scheduler.

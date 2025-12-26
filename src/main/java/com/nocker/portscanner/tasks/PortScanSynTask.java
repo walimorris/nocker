@@ -1,5 +1,7 @@
 package com.nocker.portscanner.tasks;
 
+import com.nocker.portscanner.PortScanResult;
+import com.nocker.portscanner.PortState;
 import com.nocker.portscanner.packet.Ipv4TcpSynPacket;
 import com.nocker.portscanner.packet.TcpSynSegment;
 import org.apache.logging.log4j.core.util.UuidUtil;
@@ -12,8 +14,9 @@ import org.slf4j.LoggerFactory;
 import java.io.Serializable;
 import java.net.*;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 
-public class PortScanSynTask implements PortScanTask, Runnable, Serializable {
+public class PortScanSynTask implements PortScanTask, Callable<PortScanResult>, Serializable {
     private static final Logger LOGGER = LoggerFactory.getLogger(PortScanSynTask.class);
 
     private final Inet4Address destinationHost;
@@ -34,14 +37,16 @@ public class PortScanSynTask implements PortScanTask, Runnable, Serializable {
     }
 
     @Override
-    public void run() {
+    public PortScanResult call() {
         LOGGER.info("Starting task in sneak mode: {}", this);
+        long start = System.currentTimeMillis();
+        PortState finalState = PortState.FILTERED;
+
         TcpSynSegment tcpSynSegment = new TcpSynSegment((short) sourcePort, (short) destinationPort, destinationHost);
         Ipv4TcpSynPacket ipv4TcpSynPacket = generateIpv4TcpSynPacketFromTcpSynSegment(tcpSynSegment);
         PcapHandle pcapHandle = openHandle(ipv4TcpSynPacket);
-        String filter = generateFilter();
         try {
-            pcapHandle.setFilter(filter, BpfProgram.BpfCompileMode.OPTIMIZE);
+            pcapHandle.setFilter(generateFilter(), BpfProgram.BpfCompileMode.OPTIMIZE);
             pcapHandle.sendPacket(ipv4TcpSynPacket.createIpv4Packet());
             long deadline = System.currentTimeMillis() + timeout;
             while (System.currentTimeMillis() < deadline) {
@@ -55,22 +60,31 @@ public class PortScanSynTask implements PortScanTask, Runnable, Serializable {
                 }
                 TcpPacket.TcpHeader header = tcpPacket.getHeader();
                 if (header.getSyn() && header.getAck()) {
-                    LOGGER.info("Port Open: {}", destinationPort);
+                    finalState = PortState.OPEN;
                     break;
                 }
                 if (header.getRst()) {
-                    LOGGER.info("Port Closed: {}", destinationPort);
+                    finalState = PortState.CLOSED;
                     break;
                 }
             }
-            LOGGER.info("Port Filtered: {}", destinationPort);
         } catch (Exception e) {
-            LOGGER.warn("Error handling packet transmission: {}", e.getMessage());
+            LOGGER.warn("Scan error on transmission: {}:{} - {}", destinationHost,
+                    destinationPort, e.getMessage());
         } finally {
             if (pcapHandle.isOpen()) {
                 pcapHandle.close();
             }
         }
+        long duration = System.currentTimeMillis() - start;
+        return new PortScanResult(
+                schedulerId,
+                taskId,
+                destinationHost,
+                destinationPort,
+                finalState,
+                duration
+        );
     }
 
     protected Ipv4TcpSynPacket generateIpv4TcpSynPacketFromTcpSynSegment(TcpSynSegment tcpSynSegment) {
