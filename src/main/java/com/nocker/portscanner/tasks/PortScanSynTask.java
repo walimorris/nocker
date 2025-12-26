@@ -2,21 +2,31 @@ package com.nocker.portscanner.tasks;
 
 import com.nocker.portscanner.packet.Ipv4TcpSynPacket;
 import com.nocker.portscanner.packet.TcpSynSegment;
+import org.apache.logging.log4j.core.util.UuidUtil;
 import org.pcap4j.core.*;
 import org.pcap4j.packet.Packet;
 import org.pcap4j.packet.TcpPacket;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.Serializable;
 import java.net.*;
+import java.util.UUID;
 
-public class PortScanSynTask implements Runnable {
+public class PortScanSynTask implements PortScanTask, Runnable, Serializable {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PortScanSynTask.class);
+
     private final Inet4Address destinationHost;
     private final int destinationPort;
     private final int sourcePort;
     private final int timeout;
+    private final UUID schedulerId;
+    private final UUID taskId = UuidUtil.getTimeBasedUuid();
     // add a tll
 
-    public PortScanSynTask(Inet4Address destinationHost, int destinationPort, int sourcePort,
+    public PortScanSynTask(UUID schedulerId, Inet4Address destinationHost, int destinationPort, int sourcePort,
                            int timeout) {
+        this.schedulerId = schedulerId;
         this.destinationHost = destinationHost;
         this.destinationPort = destinationPort;
         this.sourcePort = sourcePort;
@@ -25,7 +35,7 @@ public class PortScanSynTask implements Runnable {
 
     @Override
     public void run() {
-        System.out.println("scanning port: " + destinationPort + "[" + this.getClass().getName() + "]");
+        LOGGER.info("Starting task: {}", this);
         TcpSynSegment tcpSynSegment = new TcpSynSegment((short) sourcePort, (short) destinationPort, destinationHost);
         Ipv4TcpSynPacket ipv4TcpSynPacket = generateIpv4TcpSynPacketFromTcpSynSegment(tcpSynSegment);
         PcapHandle pcapHandle = openHandle(ipv4TcpSynPacket);
@@ -33,7 +43,6 @@ public class PortScanSynTask implements Runnable {
         try {
             pcapHandle.setFilter(filter, BpfProgram.BpfCompileMode.OPTIMIZE);
             pcapHandle.sendPacket(ipv4TcpSynPacket.createIpv4Packet());
-
             long deadline = System.currentTimeMillis() + timeout;
             while (System.currentTimeMillis() < deadline) {
                 Packet packet = pcapHandle.getNextPacket();
@@ -46,18 +55,17 @@ public class PortScanSynTask implements Runnable {
                 }
                 TcpPacket.TcpHeader header = tcpPacket.getHeader();
                 if (header.getSyn() && header.getAck()) {
-                    System.out.println("Port Open: " + destinationPort);
+                    LOGGER.info("Port Open: {}", destinationPort);
                     break;
                 }
                 if (header.getRst()) {
-                    System.out.println("Port Closed: " + destinationPort);
+                    LOGGER.info("Port Closed: {}", destinationPort);
                     break;
                 }
             }
-            System.out.println("Port Filtered: " + destinationPort);
+            LOGGER.info("Port Filtered: {}", destinationPort);
         } catch (Exception e) {
-            // add more robust logging
-            System.out.println("Error handling packet transmission: " + e.getMessage());
+            LOGGER.warn("Error handling packet transmission: {}", e.getMessage());
         } finally {
             if (pcapHandle.isOpen()) {
                 pcapHandle.close();
@@ -70,6 +78,7 @@ public class PortScanSynTask implements Runnable {
         try {
             ipv4TcpSynPacket = new Ipv4TcpSynPacket(tcpSynSegment, destinationHost);
         } catch (PcapNativeException | SocketException e) {
+            LOGGER.error("Failed to initialize IPv4 Syn Packet: {}", e.getMessage());
             throw new RuntimeException("Failed to initialize IPv4 SYN packet", e);
         }
         return ipv4TcpSynPacket;
@@ -79,16 +88,16 @@ public class PortScanSynTask implements Runnable {
         PcapHandle pcapHandle = null;
         try {
             String nif = ipv4TcpSynPacket.getNetworkInterface().getName();
-            System.out.println("Attempting to initialize PcapHandle with interface: " + nif);
+            LOGGER.info("Attempting to initialize PcapHandle with interface: {}", nif);
             pcapHandle = new PcapHandle.Builder(nif)
                     .snaplen(65536)
                     .promiscuousMode(PcapNetworkInterface.PromiscuousMode.NONPROMISCUOUS)
                     .immediateMode(true)
                     .timeoutMillis(10)
                     .build();
-            System.out.println("PcapHandle successfully initialized.");
+            LOGGER.info("PcapHandle successfully initialized.");
         } catch (PcapNativeException e) {
-            System.out.println("Failed to initialize PcapHandle. Exception: " + e.getMessage());
+            LOGGER.error("Failed to initialize PcapHandle: {}", e.getMessage());
         }
         return pcapHandle;
     }
@@ -100,5 +109,35 @@ public class PortScanSynTask implements Runnable {
         filter.append(" and dst port ").append(sourcePort);
         filter.append(" and (tcp[tcpflags] & (tcp-syn|tcp-ack|tcp-rst) != 0)");
         return filter.toString();
+    }
+
+    public UUID getTaskId() {
+        return taskId;
+    }
+
+    @Override
+    public String getTaskIdText() {
+        return taskId.toString();
+    }
+
+    public UUID getSchedulerId() {
+        return schedulerId;
+    }
+
+    @Override
+    public String getSchedulerIdText() {
+        return schedulerId.toString();
+    }
+
+    @Override
+    public String toString() {
+        return "PortScanSynTask{" +
+                "taskId=" + taskId +
+                ", schedulerId=" + schedulerId +
+                ", destinationHost=" + destinationHost.getHostAddress() +
+                ", destinationPort=" + destinationPort +
+                ", sourcePort=" + sourcePort +
+                ", timeout=" + timeout +
+                '}';
     }
 }

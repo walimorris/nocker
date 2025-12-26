@@ -14,4 +14,11 @@ public interface PortScanScheduler {
      * by the scheduler.
      */
     void shutdownAndWait();
+
+    /**
+     * Retrieves the unique identifier of the scheduler.
+     *
+     * @return a string representing the unique ID of the scheduler
+     */
+    String getSchedulerIdText();
 }

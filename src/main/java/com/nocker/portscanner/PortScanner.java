@@ -75,8 +75,9 @@ public class PortScanner {
 
             // refactor port scheduler logic into a method
             PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
+            logSchedulerStarted(scanScheduler);
             for (int port = MIN_PORT; port <= MAX_PORT; port++) {
-                scanScheduler.submit(new PortScanSynAckTask(hostAddress, port, timeout));
+                scanScheduler.submit(new PortScanSynAckTask(scanScheduler.getSchedulerId(), hostAddress, port, timeout));
             }
             // Scheduler will block until all task are complete, then attempt a graceful shutdown
             scanScheduler.shutdownAndWait();
@@ -114,10 +115,11 @@ public class PortScanner {
             } else {
                 // refactor port scanning logic into a method
                 PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
+                logSchedulerStarted(scanScheduler);
                 for (String port : ports) {
                     if (PortScannerUtil.isValidPortNumber(port)) {
                         int p = PortScannerUtil.converPortToInteger(port);
-                        scanScheduler.submit(new PortScanSynAckTask(hostAddress, p, timeout));
+                        scanScheduler.submit(new PortScanSynAckTask(scanScheduler.getSchedulerId(), hostAddress, p, timeout));
                     }
                 }
                 scanScheduler.shutdownAndWait();
@@ -133,16 +135,18 @@ public class PortScanner {
             // for now, will allocate a single SourcePortAllocator as a range of source ports
             SourcePortAllocator sourcePortAllocator = new SourcePortAllocator(MIN, MAX);
             PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
+            logSchedulerStarted(scanScheduler);
             int destinationPortLow = ports.getLowPort();
             int destinationPortHigh = ports.getHighPort();
             writeToFileScanningHostMessage(inet4Address.getHostAddress(), fileWriter);
             while (destinationPortLow <= destinationPortHigh) {
-                scanScheduler.submit(new PortScanSynTask(inet4Address, destinationPortLow,
+                scanScheduler.submit(new PortScanSynTask(scanScheduler.getSchedulerId(), inet4Address, destinationPortLow,
                         sourcePortAllocator.getAndIncrement(), timeout));
                 destinationPortLow++;
             }
             scanScheduler.shutdownAndWait();
             logAllPortsScanned();
+            logSchedulerClosed(scanScheduler);
         } else {
             PortScannerUtil.logInvalidHost(host);
         }
@@ -158,12 +162,13 @@ public class PortScanner {
                 hosts.incrementLastOctet();
             }
             PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
+            logSchedulerStarted(scanScheduler);
             while (hosts.getOctets()[3] < 255) {
                 InetAddress address = PortScannerUtil.getHostAddress(hosts.getAddress());
                 if (ObjectUtils.isNotEmpty(address)) {
                     writeToFileScanningHostMessage(hosts.getAddress(), fileWriter);
                     for (int port = MIN_PORT; port <= MAX_PORT; port++) {
-                        scanScheduler.submit(new PortScanSynAckTask(address, port, timeout));
+                        scanScheduler.submit(new PortScanSynAckTask(scanScheduler.getSchedulerId(), address, port, timeout));
                     }
                 }
                 hosts.incrementLastOctet();
@@ -223,7 +228,11 @@ public class PortScanner {
     }
 
     private void logSchedulerClosed(PortScanScheduler scheduler) {
-        LOGGER.info("{} scheduler closed", scheduler.getClass().getName());
+        LOGGER.info("Stopped Scheduler: {}", scheduler.toString());
+    }
+
+    private void logSchedulerStarted(PortScanScheduler scheduler) {
+        LOGGER.info("Started Scheduler: {}", scheduler.toString());
     }
 
     private LocalDateTime getTime() {

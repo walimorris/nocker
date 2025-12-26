@@ -1,5 +1,8 @@
 package com.nocker.portscanner.scheduler;
 
+import org.apache.logging.log4j.core.util.UuidUtil;
+
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -10,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 public class PortScanSynAckScheduler implements PortScanScheduler {
     private final ExecutorService executorService;
     private int concurrency = 100; // adjustable
+    private final UUID schedulerId = UuidUtil.getTimeBasedUuid();
 
      public PortScanSynAckScheduler() {
          this.executorService = Executors.newFixedThreadPool(concurrency);
@@ -35,7 +39,25 @@ public class PortScanSynAckScheduler implements PortScanScheduler {
          }
     }
 
+    public UUID getSchedulerId() {
+         return schedulerId;
+    }
+
+    @Override
+    public String getSchedulerIdText() {
+        return schedulerId.toString();
+    }
+
     public int getConcurrency() {
          return this.concurrency;
+    }
+
+    @Override
+    public String toString() {
+        return "PortScanSynAckScheduler{" +
+                "schedulerId=" + schedulerId +
+                ", concurrency=" + concurrency +
+                ", executorServiceStatus=" + (executorService.isShutdown() ? "SHUTDOWN" : "ACTIVE") +
+                '}';
     }
 }

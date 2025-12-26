@@ -2,12 +2,15 @@ package com.nocker.portscanner.command;
 
 import com.nocker.Flag;
 import org.apache.commons.collections4.CollectionUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
 public class CommandLineInput {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CommandLineInput.class);
+
     public String[] commandLineInput;
-    public static Set<Flag> flags = Flag.flagValues();
 
     public CommandLineInput(String[] commandLineInput) {
         this.commandLineInput = commandLineInput;
@@ -23,7 +26,8 @@ public class CommandLineInput {
 
     public String getCommand() {
         if (CollectionUtils.isEmpty(Arrays.asList(this.commandLineInput))) {
-            throw new IllegalArgumentException("invalid command");
+            LOGGER.error("Invalid command [{}]: type 'help' for valid command options", this);
+            throw new IllegalArgumentException("command input must be valid nocker command");
         }
         return this.commandLineInput[1].toLowerCase();
     }

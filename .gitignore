@@ -4,7 +4,7 @@ out/
 !**/src/test/**/out/
 /logs
 *.log
-
+*.txt
 ### Eclipse ###
 .apt_generated
 .classpath
