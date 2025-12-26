@@ -6,6 +6,7 @@ import java.util.Set;
 public enum Flag {
     TIMEOUT("timeout", "-t"),
     CONCURRENCY("concurrency", "-c"),
+    SYN("sneak", "-s"),
     OUT("out", "-o");
 
     private final String full;

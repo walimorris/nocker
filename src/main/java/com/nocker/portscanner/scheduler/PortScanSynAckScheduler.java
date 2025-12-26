@@ -39,6 +39,7 @@ public class PortScanSynAckScheduler implements PortScanScheduler {
          }
     }
 
+    @Override
     public UUID getSchedulerId() {
          return schedulerId;
     }
@@ -48,8 +49,14 @@ public class PortScanSynAckScheduler implements PortScanScheduler {
         return schedulerId.toString();
     }
 
+    @Override
     public int getConcurrency() {
          return this.concurrency;
+    }
+
+    @Override
+    public ExecutorService getExecutorService() {
+         return this.executorService;
     }
 
     @Override

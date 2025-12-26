@@ -37,6 +37,7 @@ public class PortScanner {
     private final int concurrency;
     private final InvocationCommand invocationCommand;
     private final NockerFileWriter fileWriter;
+    private final boolean sneak;
 
     public static final int MIN_PORT = 1;
     public static final int MAX_PORT = 65536;
@@ -45,12 +46,19 @@ public class PortScanner {
     public static final int MAX_PORTS_CONCURRENCY_USAGE = 100;
     public static final int DEFAULT_TIMEOUT = 5000;
     public static final int DEFAULT_CONCURRENCY = 100;
+    // for now, will allocate a single SourcePortAllocator as a range of source ports
+    public static final SourcePortAllocator sourcePortAllocator = new SourcePortAllocator(MIN, MAX);
 
-    public PortScanner(InvocationCommand invocationCommand, NockerFileWriter nockerFileWriter, int timeout, int concurrency) {
+    public PortScanner(InvocationCommand invocationCommand,
+                       NockerFileWriter nockerFileWriter,
+                       int timeout,
+                       int concurrency,
+                       boolean sneak) {
         this.invocationCommand = invocationCommand;
         this.fileWriter = nockerFileWriter;
         this.timeout = timeout >= 1000 && timeout <= 10000 ? timeout : DEFAULT_TIMEOUT;
         this.concurrency = concurrency >= 2 && concurrency <= 300 ? concurrency : DEFAULT_CONCURRENCY;
+        this.sneak = sneak;
     }
 
     @Scan
@@ -69,7 +77,7 @@ public class PortScanner {
 
     @Scan
     public void scan(@Host String host) {
-        InetAddress hostAddress = PortScannerUtil.getHostAddress(host);
+        Inet4Address hostAddress = PortScannerUtil.getHostInet4Address(host);
         if (ObjectUtils.isNotEmpty(hostAddress)) {
             writeToFileScanningHostMessage(host, fileWriter);
 
@@ -77,7 +85,7 @@ public class PortScanner {
             PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
             logSchedulerStarted(scanScheduler);
             for (int port = MIN_PORT; port <= MAX_PORT; port++) {
-                scanScheduler.submit(new PortScanSynAckTask(scanScheduler.getSchedulerId(), hostAddress, port, timeout));
+                submitTask(scanScheduler, hostAddress, port);
             }
             // Scheduler will block until all task are complete, then attempt a graceful shutdown
             scanScheduler.shutdownAndWait();
@@ -101,7 +109,7 @@ public class PortScanner {
     // allows range scan: nocker scan host=localhost ports=8080,8081,8082,8083,8084
     @Scan
     public void scan(@Host String host, @Ports List<String> ports) {
-        InetAddress hostAddress = PortScannerUtil.getHostAddress(host);
+        Inet4Address hostAddress = PortScannerUtil.getHostInet4Address(host);
         if (ObjectUtils.isNotEmpty(hostAddress)) {
             writeToFileScanningHostMessage(host, fileWriter);
             if (ports.size() < MAX_PORTS_CONCURRENCY_USAGE) {
@@ -119,7 +127,7 @@ public class PortScanner {
                 for (String port : ports) {
                     if (PortScannerUtil.isValidPortNumber(port)) {
                         int p = PortScannerUtil.converPortToInteger(port);
-                        scanScheduler.submit(new PortScanSynAckTask(scanScheduler.getSchedulerId(), hostAddress, p, timeout));
+                        submitTask(scanScheduler, hostAddress, p);
                     }
                 }
                 scanScheduler.shutdownAndWait();
@@ -132,16 +140,13 @@ public class PortScanner {
     public void scan(@Host String host, @Ports PortWildcard ports) {
         Inet4Address inet4Address = PortScannerUtil.getHostInet4Address(host);
         if (ObjectUtils.isNotEmpty(inet4Address)) {
-            // for now, will allocate a single SourcePortAllocator as a range of source ports
-            SourcePortAllocator sourcePortAllocator = new SourcePortAllocator(MIN, MAX);
             PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
             logSchedulerStarted(scanScheduler);
             int destinationPortLow = ports.getLowPort();
             int destinationPortHigh = ports.getHighPort();
             writeToFileScanningHostMessage(inet4Address.getHostAddress(), fileWriter);
             while (destinationPortLow <= destinationPortHigh) {
-                scanScheduler.submit(new PortScanSynTask(scanScheduler.getSchedulerId(), inet4Address, destinationPortLow,
-                        sourcePortAllocator.getAndIncrement(), timeout));
+                submitTask(scanScheduler, inet4Address, destinationPortLow);
                 destinationPortLow++;
             }
             scanScheduler.shutdownAndWait();
@@ -164,11 +169,11 @@ public class PortScanner {
             PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
             logSchedulerStarted(scanScheduler);
             while (hosts.getOctets()[3] < 255) {
-                InetAddress address = PortScannerUtil.getHostAddress(hosts.getAddress());
+                Inet4Address address = PortScannerUtil.getHostInet4Address(hosts.getAddress());
                 if (ObjectUtils.isNotEmpty(address)) {
                     writeToFileScanningHostMessage(hosts.getAddress(), fileWriter);
                     for (int port = MIN_PORT; port <= MAX_PORT; port++) {
-                        scanScheduler.submit(new PortScanSynAckTask(scanScheduler.getSchedulerId(), address, port, timeout));
+                        submitTask(scanScheduler, address, port);
                     }
                 }
                 hosts.incrementLastOctet();
@@ -195,6 +200,17 @@ public class PortScanner {
         return timeout;
     }
 
+    private void submitTask(PortScanScheduler scanScheduler, Inet4Address inet4Address, int port) {
+        if (sneak) {
+            scanScheduler.submit(new PortScanSynTask(scanScheduler.getSchedulerId(), inet4Address, port,
+                    sourcePortAllocator.getAndIncrement(), timeout));
+        } else {
+            scanScheduler.submit(new PortScanSynAckTask(scanScheduler.getSchedulerId(), inet4Address,
+                    port, timeout));
+        }
+    }
+
+    // introduce loud or sneak option
     private void connectPortImmediate(InetAddress hostAddress, int port, NockerFileWriter writer) {
         try (Socket socket = new Socket()) {
             socket.connect(new InetSocketAddress(hostAddress, port), timeout);

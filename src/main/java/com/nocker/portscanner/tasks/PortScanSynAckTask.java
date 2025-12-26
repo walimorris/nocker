@@ -27,7 +27,7 @@ public class PortScanSynAckTask implements PortScanTask, Runnable, Serializable 
 
     @Override
     public void run() {
-        LOGGER.info("Starting task: {}", this);
+        LOGGER.info("Starting task in loud mode: {}", this);
         try (Socket socket = new Socket()) {
             socket.connect(new InetSocketAddress(host, port), timeout);
             LOGGER.info("Port: {} is open", + socket.getPort());

@@ -35,7 +35,7 @@ public class PortScanSynTask implements PortScanTask, Runnable, Serializable {
 
     @Override
     public void run() {
-        LOGGER.info("Starting task: {}", this);
+        LOGGER.info("Starting task in sneak mode: {}", this);
         TcpSynSegment tcpSynSegment = new TcpSynSegment((short) sourcePort, (short) destinationPort, destinationHost);
         Ipv4TcpSynPacket ipv4TcpSynPacket = generateIpv4TcpSynPacketFromTcpSynSegment(tcpSynSegment);
         PcapHandle pcapHandle = openHandle(ipv4TcpSynPacket);

@@ -18,6 +18,7 @@ public class Main {
     public static void main(String[] args) {
         if (OperatingSystemUtils.isMacOs()) {
             //        String test = "nocker scan --host=scanme.nmap.org -t 5000 -c 200";
+            String test = "nocker scan --host=scanme.nmap.org -t 5000 -c 200 -s true";
 //          String test = "nocker scan --host=localhost --port=8080 -t 1000";
 //          String test = "nocker scan --host=localhost --port=8080 -t 1000 -o /Users/walimorris/nocker/test1.txt";
 //          String test = "nocker scan --host=localhost -t 1000 --concurrency=155";
@@ -26,7 +27,8 @@ public class Main {
 //          String test = "nocker scan --hosts=localhost,scanme.nmap.org -t 1000 -c 200";
 //          String test = "nocker cidr-scan --hosts=192.168.1.253/24 -t 1000 -c 300";
 //          String test = "nocker scan --host=localhost --ports=0,1,8080,8081,8082,8083,8084";
-          String test = "nocker scan --host=scanme.nmap.org --ports=8080-8180 -t 5000";
+//          String test = "nocker scan --host=scanme.nmap.org --ports=8080-8180 -t 5000"; // loud mode
+//            String test = "nocker scan --host=scanme.nmap.org --ports=8080-8180 -t 5000 --sneak=true"; // sneak mode
             String[] args1 = test.split(" ");
             CommandLineInput commandLineInput = new CommandLineInput(args1);
             InvocationCommand invocationCommand = AnnotationRetriever.retrieve(commandLineInput);
@@ -41,9 +43,10 @@ public class Main {
         Map<String, String> flags = invocationCommand.getCommandLineInput().getFlags();
         String outPath = flags.getOrDefault(Flag.OUT.getFullName(), null);
         NockerFileWriter nockerFileWriter = outPath != null ? new NockerFileWriter(outPath) : null;
-        int concurrency = initConcurrency(invocationCommand);
-        int timeout = initTimeout(invocationCommand);
-        PortScanner portScanner = new PortScanner(invocationCommand, nockerFileWriter, timeout, concurrency);
+        int concurrency = initConcurrency(flags);
+        int timeout = initTimeout(flags);
+        boolean syn = initSneakyLink(flags);
+        PortScanner portScanner = new PortScanner(invocationCommand, nockerFileWriter, timeout, concurrency, syn);
         try {
             invocationCommand.getMethod().invoke(portScanner, invocationCommand.getArgs());
         } catch (InvocationTargetException | IllegalAccessException exception) {
@@ -57,13 +60,15 @@ public class Main {
         }
     }
 
-    private static int initTimeout(InvocationCommand invocationCommand) {
-        Map<String, String> flags = invocationCommand.getCommandLineInput().getFlags();
+    private static int initTimeout(Map<String, String> flags) {
         return Integer.parseInt(flags.getOrDefault(Flag.TIMEOUT.getFullName(), String.valueOf(0)));
     }
 
-    private static int initConcurrency(InvocationCommand invocationCommand) {
-        Map<String, String> flags = invocationCommand.getCommandLineInput().getFlags();
+    private static int initConcurrency(Map<String, String> flags) {
         return Integer.parseInt(flags.getOrDefault(Flag.CONCURRENCY.getFullName(), String.valueOf(0)));
+    }
+
+    private static boolean initSneakyLink(Map<String, String> flags) {
+        return Boolean.parseBoolean(flags.getOrDefault(Flag.SYN.getFullName(), String.valueOf(false)));
     }
 }
