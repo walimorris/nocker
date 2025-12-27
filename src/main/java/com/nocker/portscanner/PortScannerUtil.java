@@ -1,8 +1,5 @@
 package com.nocker.portscanner;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.pcap4j.core.PcapAddress;
@@ -14,18 +11,15 @@ import org.slf4j.LoggerFactory;
 
 import java.net.*;
 import java.util.Arrays;
-import java.util.List;
 
-public class PortScannerUtil {
+public final class PortScannerUtil {
     private static final Logger LOGGER = LoggerFactory.getLogger(PortScannerUtil.class);
 
     private static final int MIN_PORT = 1;
     private static final int MAX_PORT = 65536;
 
-    private static final ObjectMapper mapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
-
     private PortScannerUtil() {
-        // unable to init util
+        throw new AssertionError("PortScanUtil cannot be instantiated");
     }
 
     public static Integer[] convertToIntegerArray(String[] objects) {
@@ -130,28 +124,6 @@ public class PortScannerUtil {
             }
         }
         return null;
-    }
-
-    /**
-     * Converts a list of {@link PortScanResult} objects into a JSON string representation.
-     * If the list is empty, an exception is thrown. If JSON processing fails, the error will
-     * be logged, and the method returns null.
-     *
-     * @param portScanResults a non-empty list of {@link PortScanResult} objects to be converted to JSON
-     * @return a JSON string representation of the provided port scan results, or null if JSON processing fails
-     * @throws IllegalStateException if the provided list of port scan results is empty
-     */
-    public static String jsonifyPortscanResults(List<PortScanResult> portScanResults) {
-        if (ObjectUtils.isNotEmpty(portScanResults)) {
-            try {
-                return mapper.writeValueAsString(portScanResults);
-            } catch (JsonProcessingException e) {
-                List<PortScanResult> truncatedResultsList = portScanResults.subList(0, 3);
-                LOGGER.error("Error processing portscan results to json: {}...: ", truncatedResultsList);
-                return null;
-            }
-        }
-        throw new IllegalStateException("Cannot jsonify empty portscan results list");
     }
 
     // invalid port will return 0

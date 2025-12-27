@@ -7,6 +7,7 @@ public enum Flag {
     TIMEOUT("timeout", "-t"),
     CONCURRENCY("concurrency", "-c"),
     SYN("sneak", "-s"),
+    FORMAT("format", "-f"),
     OUT("out", "-o");
 
     private final String full;
