@@ -1,0 +1,13 @@
+nocker scan --host=scanme.nmap.org -t 5000 -c 200
+nocker scan --host=scanme.nmap.org -t 5000 -c 200 -s true
+nocker scan --host=localhost --port=8080 -t 1000
+nocker scan --host=localhost --port=8080 -t 1000 -o /Users/walimorris/nocker/test1.txt
+nocker scan --host=localhost -t 1000 --concurrency=155
+
+below command will default to 5000 ms timeout because it's below the low bound for timeouts (1000ms)
+nocker scan --hosts=localhost,scanme.nmap.org --port=8080 -t 500 --concurrency=125
+nocker scan --hosts=localhost,scanme.nmap.org -t 1000 -c 200
+nocker cidr-scan --hosts=192.168.1.253/24 -t 1000 -c 300
+nocker scan --host=localhost --ports=0,1,8080,8081,8082,8083,8084
+nocker scan --host=scanme.nmap.org --ports=8080-8180 -t 5000 // loud mode
+nocker scan --host=scanme.nmap.org --ports=8080-8180 -t 5000 --sneak=true // sneak mode
