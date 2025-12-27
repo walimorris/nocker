@@ -1,6 +1,7 @@
 package com.nocker.portscanner.scheduler;
 
 import java.util.List;
+import java.util.OptionalLong;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -27,6 +28,16 @@ public interface PortScanScheduler {
      * @return a list of results of type {@code T} from the completed tasks
      */
     <T> List<T> shutdownAndCollect(Class<T> resultType);
+
+    /**
+     * Retrieves the duration of time in milliseconds that elapsed between the start
+     * of task execution and the shutdown of the scheduler. If either the start or
+     * stop time is not initialized, an empty {@code OptionalLong} is returned.
+     *
+     * @return an {@code OptionalLong} containing the elapsed time in milliseconds
+     *         if both start and stop times are available; otherwise, an empty {@code OptionalLong}.
+     */
+    public OptionalLong getDurationMillis();
 
     /**
      * Retrieves the unique identifier of the scheduler.

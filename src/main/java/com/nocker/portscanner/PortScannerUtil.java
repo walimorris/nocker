@@ -62,6 +62,16 @@ public final class PortScannerUtil {
         return hostAddress;
     }
 
+    public static String getHostInet4AddressName(String host) {
+        String hostAddressName = null;
+        try {
+            hostAddressName = isLocalHost(host) ? Inet4Address.getLocalHost().getHostName() : Inet4Address.getByName(host).getHostName();
+        } catch (UnknownHostException e) {
+            LOGGER.error("Fatality, unknown host [{}]: {}", host, e.getMessage(), e);
+        }
+        return hostAddressName;
+    }
+
     private static boolean isLocalHost(String host) {
         if (StringUtils.isNotBlank(host)) {
             host = host.toLowerCase();

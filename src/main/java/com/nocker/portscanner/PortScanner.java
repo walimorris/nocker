@@ -8,6 +8,8 @@ import com.nocker.portscanner.command.InvocationCommand;
 import com.nocker.portscanner.annotation.arguements.Ports;
 import com.nocker.portscanner.annotation.commands.CIDRScan;
 import com.nocker.portscanner.annotation.commands.Scan;
+import com.nocker.portscanner.model.HostIdentity;
+import com.nocker.portscanner.model.HostModel;
 import com.nocker.portscanner.scheduler.PortScanScheduler;
 import com.nocker.portscanner.scheduler.PortScanSynAckScheduler;
 import com.nocker.portscanner.tasks.PortScanSynAckTask;
@@ -40,7 +42,10 @@ public class PortScanner {
 
     // this max is random - justify this (or a higher/lower bound) with numbers
     public static final int MAX_PORTS_CONCURRENCY_USAGE = 100;
-    public static final int DEFAULT_TIMEOUT = 500;
+
+    public static final int DEFAULT_TIMEOUT = 200;
+    public static final int TIME_OUT_LOW_LIMIT = 50;
+    public static final int TIME_OUT_HIGH_LIMIT = 1000;
     public static final int DEFAULT_CONCURRENCY = 100;
     // for now, will allocate a single SourcePortAllocator as a range of source ports
     public static final SourcePortAllocator sourcePortAllocator = new SourcePortAllocator(MIN, MAX);
@@ -54,7 +59,7 @@ public class PortScanner {
         this.invocationCommand = invocationCommand;
         this.fileWriter = nockerFileWriter;
         this.outputFormatter = outputFormatter;
-        this.timeout = timeout >= 1000 && timeout <= 10000 ? timeout : DEFAULT_TIMEOUT;
+        this.timeout = timeout >= TIME_OUT_LOW_LIMIT && timeout <= TIME_OUT_HIGH_LIMIT ? timeout : DEFAULT_TIMEOUT;
         this.concurrency = concurrency >= 2 && concurrency <= 300 ? concurrency : DEFAULT_CONCURRENCY;
         this.sneak = sneak;
     }
@@ -102,6 +107,7 @@ public class PortScanner {
     @Scan
     public void scan(@Host String host, @Ports List<String> ports) {
         Inet4Address hostAddress = PortScannerUtil.getHostInet4Address(host);
+        String hostAddressName = PortScannerUtil.getHostInet4AddressName(host);
         if (ObjectUtils.isNotEmpty(hostAddress)) {
             if (ports.size() < MAX_PORTS_CONCURRENCY_USAGE) {
                 List<PortScanResult> results = new ArrayList<>();
@@ -124,7 +130,7 @@ public class PortScanner {
                     }
                 }
                 List<PortScanResult> results = scanScheduler.shutdownAndCollect(PortScanResult.class);
-                doShowOutput(results);
+                triggerResponse(scanScheduler, results, hostAddress.getHostAddress(), hostAddressName);
             }
         }
     }
@@ -132,6 +138,7 @@ public class PortScanner {
     @Scan
     public void scan(@Host String host, @Ports PortWildcard ports) {
         Inet4Address inet4Address = PortScannerUtil.getHostInet4Address(host);
+        String hostAddressName = PortScannerUtil.getHostInet4AddressName(host);
         if (ObjectUtils.isNotEmpty(inet4Address)) {
             PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
             int destinationPortLow = ports.getLowPort();
@@ -141,7 +148,7 @@ public class PortScanner {
                 destinationPortLow++;
             }
             List<PortScanResult> results = scanScheduler.shutdownAndCollect(PortScanResult.class);
-            doShowOutput(results);
+            triggerResponse(scanScheduler, results, inet4Address.getHostAddress(), hostAddressName);
         } else {
             PortScannerUtil.logInvalidHost(host);
         }
@@ -208,29 +215,43 @@ public class PortScanner {
         }
     }
 
-    private void writeToFile(PortScanResult portScanResult) {
-        if (ObjectUtils.isNotEmpty(portScanResult)) {
+    private void triggerResponse(PortScanScheduler scanScheduler, List<PortScanResult> results, String hostAddress, String hostAddressName) {
+        HostIdentity hostIdentity = new HostIdentity.Builder()
+                .hostAddress(hostAddress)
+                .hostname(hostAddressName)
+                .build();
+        HostModel hostModel = new HostModel.Builder()
+                .schedulerId(scanScheduler.getSchedulerId())
+                .hostIdentity(hostIdentity)
+                .tasks(results)
+                .durationMillis(scanScheduler.getDurationMillis().orElse(0))
+                .build();
+        doShowOutput(hostModel);
+    }
+
+    private void writeToFile(Object obj) {
+        if (ObjectUtils.isNotEmpty(obj)) {
             if (ObjectUtils.allNotNull(outputFormatter, fileWriter)) {
-                outputFormatter.write(portScanResult, fileWriter.getPrintStream());
+                outputFormatter.write(obj, fileWriter.getPrintStream());
             }
         }
     }
 
-    private void writeToFile(List<PortScanResult> portScanResult) {
-        if (ObjectUtils.isNotEmpty(portScanResult)) {
+    private void writeToFile(List<?> listObject) {
+        if (ObjectUtils.isNotEmpty(listObject)) {
             if (ObjectUtils.allNotNull(outputFormatter, fileWriter)) {
-                outputFormatter.write(portScanResult, fileWriter.getPrintStream());
+                outputFormatter.write(listObject, fileWriter.getPrintStream());
             }
         }
     }
 
-    private void doShowOutput(List<PortScanResult> results) {
-        outputFormatter.write(results, System.out);
-        writeToFile(results);
+    private void doShowOutput(Object obj) {
+        outputFormatter.write(obj, System.out);
+        writeToFile(obj);
     }
 
-    private void doShowOutput(PortScanResult result) {
-        outputFormatter.write(result, System.out);
-        writeToFile(result);
+    private void doShowOutput(List<?> listObject) {
+        outputFormatter.write(listObject, System.out);
+        writeToFile(listObject);
     }
 }

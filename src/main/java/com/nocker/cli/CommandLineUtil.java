@@ -5,8 +5,8 @@ import com.fasterxml.jackson.core.util.DefaultIndenter;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.nocker.portscanner.PortScanResult;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,37 +30,37 @@ public final class CommandLineUtil {
     }
 
     /**
-     * Converts a list of {@link PortScanResult} objects into a JSON string representation.
+     * Converts a list of {@link <T>} objects into a JSON string representation.
      * If the list is empty, an exception is thrown. If JSON processing fails, the error will
      * be logged, and the method returns null.
      *
-     * @param portScanResults a non-empty list of {@link PortScanResult} objects to be converted to JSON
-     * @return a JSON string representation of the provided port scan results, or null if JSON processing fails
-     * @throws IllegalStateException if the provided list of port scan results is empty
+     * @param <T> a non-empty list of objects to be converted to JSON
+     * @return a JSON string representation of the provided objects, or null if JSON processing fails
+     * @throws IllegalStateException if the provided list is empty
      */
-    public static String jsonifyPortscanResults(List<PortScanResult> portScanResults) {
-        if (ObjectUtils.isNotEmpty(portScanResults)) {
-            try {
-                return mapper.writer(mapper.getSerializationConfig().getDefaultPrettyPrinter())
-                        .writeValueAsString(portScanResults);
-            } catch (JsonProcessingException e) {
-                List<PortScanResult> truncatedResultsList = portScanResults.subList(0, 3);
-                LOGGER.error("Error processing portscan results to json: {}...: ", truncatedResultsList);
-                return null;
-            }
+    public static <T> String jsonifyList(List<T> values) {
+        if (ObjectUtils.isEmpty(values)) {
+            throw new IllegalStateException("Cannot jsonify empty or null value");
         }
-        throw new IllegalStateException("Cannot jsonify empty portscan results list");
+        try {
+            return mapper.writer(mapper.getSerializationConfig().getDefaultPrettyPrinter())
+                    .writeValueAsString(values);
+        } catch (JsonProcessingException e) {
+            List<T> truncatedResultsList = values.subList(0, 3);
+            LOGGER.error("Error processing portscan results to json: {}...: ", truncatedResultsList);
+            return null;
+        }
     }
 
-    public static String jsonifyPortScanResult(PortScanResult result) {
-        if (ObjectUtils.isNotEmpty(result)) {
-            try {
-                return mapper.writeValueAsString(result);
-            } catch (JsonProcessingException e) {
-                LOGGER.error("Error processing port scan result to json {}: ", result);
-                return null;
-            }
+    public static <T> String jsonify(T value) {
+        if (value == null) {
+            throw new IllegalStateException("Cannot jsonify null value");
         }
-        throw new IllegalStateException("Cannot jsonify empty portscan result");
+        try {
+            return mapper.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            LOGGER.error("Error processing to json {}: ", value);
+            return null;
+        }
     }
 }

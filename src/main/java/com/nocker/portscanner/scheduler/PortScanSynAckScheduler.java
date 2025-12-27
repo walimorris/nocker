@@ -4,8 +4,10 @@ import org.apache.logging.log4j.core.util.UuidUtil;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalLong;
 import java.util.UUID;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * {@code PortScanSynAckScheduler} schedules valid SYN or SYN ACK tasks.
@@ -13,11 +15,16 @@ import java.util.concurrent.*;
 public class PortScanSynAckScheduler implements PortScanScheduler {
     private final ExecutorService executorService;
     private final List<Future<?>> submittedTasks = new CopyOnWriteArrayList<>();
-    private int concurrency = 100; // adjustable
+    private final int concurrency; // adjustable
     private final UUID schedulerId = UuidUtil.getTimeBasedUuid();
 
+    private final AtomicLong startNanos = new AtomicLong(0);
+    private volatile long stopNanos;
+
+    private static final int DEFAULT_CONCURRENCY = 100;
+
      public PortScanSynAckScheduler() {
-         this.executorService = Executors.newFixedThreadPool(concurrency);
+         this(DEFAULT_CONCURRENCY);
      }
 
     public PortScanSynAckScheduler(int concurrency) {
@@ -27,6 +34,7 @@ public class PortScanSynAckScheduler implements PortScanScheduler {
 
     @Override
     public <T> void submit(Callable<T> task) {
+         startNanos.compareAndSet(0, System.nanoTime());
          Future<T> future = executorService.submit(task);
          submittedTasks.add(future);
     }
@@ -52,7 +60,17 @@ public class PortScanSynAckScheduler implements PortScanScheduler {
                 Thread.currentThread().interrupt();
             }
         }
+         stopNanos = System.nanoTime();
         return results;
+    }
+
+    @Override
+    public OptionalLong getDurationMillis() {
+         long start = startNanos.get();
+         long stop = stopNanos;
+         return (start != 0 && stop != 0)
+                 ? OptionalLong.of(TimeUnit.NANOSECONDS.toMillis(stop - start))
+                 : OptionalLong.empty();
     }
 
     @Override

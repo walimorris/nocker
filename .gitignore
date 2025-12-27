@@ -4,6 +4,10 @@ out/
 !**/src/test/**/out/
 /logs
 *.log
+*.iml
+.idea/
+
+scripts/nocker-py/
 
 ### Eclipse ###
 .apt_generated
