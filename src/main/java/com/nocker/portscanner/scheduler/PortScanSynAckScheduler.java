@@ -1,11 +1,10 @@
 package com.nocker.portscanner.scheduler;
 
+import com.nocker.portscanner.BatchState;
+import com.nocker.portscanner.PortScanner;
 import org.apache.logging.log4j.core.util.UuidUtil;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.OptionalLong;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -14,17 +13,17 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class PortScanSynAckScheduler implements PortScanScheduler {
     private final ExecutorService executorService;
-    private final List<Future<?>> submittedTasks = new CopyOnWriteArrayList<>();
+    private final AtomicLong currentBatch = new AtomicLong(0);
+    private final Map<Long, BatchState> batches = new ConcurrentHashMap<>();
     private final int concurrency; // adjustable
     private final UUID schedulerId = UuidUtil.getTimeBasedUuid();
 
     private final AtomicLong startNanos = new AtomicLong(0);
-    private volatile long stopNanos;
-
-    private static final int DEFAULT_CONCURRENCY = 100;
+    private final AtomicLong latestStartNanos = new AtomicLong(0);
+    private final AtomicLong stopNanos = new AtomicLong(0);
 
      public PortScanSynAckScheduler() {
-         this(DEFAULT_CONCURRENCY);
+         this(PortScanner.DEFAULT_CONCURRENCY);
      }
 
     public PortScanSynAckScheduler(int concurrency) {
@@ -34,43 +33,75 @@ public class PortScanSynAckScheduler implements PortScanScheduler {
 
     @Override
     public <T> void submit(Callable<T> task) {
-         startNanos.compareAndSet(0, System.nanoTime());
-         Future<T> future = executorService.submit(task);
-         submittedTasks.add(future);
+        long now = System.nanoTime();
+        startNanos.compareAndSet(0, now);
+        latestStartNanos.set(now); // batch duration monitor
+         long batch = currentBatch.get();
+         BatchState state = batches.computeIfAbsent(batch, b -> new BatchState());
+         Future<T> future = executorService.submit(() -> {
+             try {
+                 return task.call();
+             } finally {
+                 state.onComplete();
+             }
+         });
+         state.onSubmit(future);
     }
 
     @Override
     public <T> List<T> shutdownAndCollect(Class<T> resultType) {
-         executorService.shutdown();
-         try {
-             executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
-         } catch (InterruptedException e) {
-             Thread.currentThread().interrupt();
-         }
-         List<T> results = new ArrayList<>();
-         for (Future<?> future : submittedTasks) {
-            try {
+        List<T> results = collect(resultType);
+        executorService.shutdown();
+        try {
+            executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        stopNanos.set(System.nanoTime());
+        return results;
+    }
+
+    @Override
+    public <T> List<T> collect(Class<T> resultType) {
+        List<T> results = new ArrayList<>();
+        long batch = currentBatch.get();
+        BatchState state = batches.computeIfAbsent(batch, b -> new BatchState());
+        state.seal();
+        try {
+            state.done.await();
+            for (Future<?> future : state.futures) {
                 Object result = future.get();
                 if (resultType.isInstance(result)) {
                     results.add(resultType.cast(result));
                 }
-            } catch (ExecutionException e) {
-                // do something
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException e) {
+            // do something
+        } finally {
+            currentBatch.incrementAndGet();
         }
-         stopNanos = System.nanoTime();
+        stopNanos.set(System.nanoTime());
         return results;
     }
 
     @Override
     public OptionalLong getDurationMillis() {
          long start = startNanos.get();
-         long stop = stopNanos;
+         long stop = stopNanos.get();
          return (start != 0 && stop != 0)
                  ? OptionalLong.of(TimeUnit.NANOSECONDS.toMillis(stop - start))
                  : OptionalLong.empty();
+    }
+
+    @Override
+    public OptionalLong getDurationMillisBatch() {
+        long start = latestStartNanos.get();
+        long stop = stopNanos.get();
+        return (start != 0 && stop != 0)
+                ? OptionalLong.of(TimeUnit.NANOSECONDS.toMillis(stop - start))
+                : OptionalLong.empty();
     }
 
     @Override

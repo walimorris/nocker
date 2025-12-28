@@ -1,7 +1,6 @@
 package com.nocker.portscanner.model;
 
 import com.nocker.portscanner.PortScanResult;
-import com.nocker.portscanner.tasks.PortScanTask;
 
 import java.util.List;
 import java.util.UUID;

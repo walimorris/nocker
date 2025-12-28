@@ -30,6 +30,19 @@ public interface PortScanScheduler {
     <T> List<T> shutdownAndCollect(Class<T> resultType);
 
     /**
+     * Collects the results of completed tasks that match the specified result type.
+     * The results are retrieved from the currently managed batch of tasks.
+     * If a task's result matches the provided type, it is added to the returned list.
+     * The current batch is finalized after the collection completes, and a new batch is initiated.
+     *
+     * @param <T> the type of results to collect
+     * @param resultType the class type of results to be collected
+     * @return a list of results of type {@code T} from the completed tasks,
+     *         or {@code null} if an error occurs during task result retrieval
+     */
+    <T> List<T> collect(Class<T> resultType);
+
+    /**
      * Retrieves the duration of time in milliseconds that elapsed between the start
      * of task execution and the shutdown of the scheduler. If either the start or
      * stop time is not initialized, an empty {@code OptionalLong} is returned.
@@ -38,6 +51,19 @@ public interface PortScanScheduler {
      *         if both start and stop times are available; otherwise, an empty {@code OptionalLong}.
      */
     public OptionalLong getDurationMillis();
+
+    /**
+     * Retrieves the duration of time in milliseconds that elapsed during
+     * the execution of the tasks in the current batch. This value is determined
+     * by the difference between the latest start time of the batch and the
+     * stop time of the scheduler. If either the latest start time or
+     * stop time is not initialized, an empty {@code OptionalLong} is returned.
+     *
+     * @return an {@code OptionalLong} containing the elapsed time in milliseconds
+     *         for the current batch if both the latest start and stop times are
+     *         available; otherwise, an empty {@code OptionalLong}.
+     */
+    public OptionalLong getDurationMillisBatch();
 
     /**
      * Retrieves the unique identifier of the scheduler.

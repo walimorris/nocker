@@ -41,12 +41,13 @@ public class PortScanner {
     public static final int MAX_PORT = 65536;
 
     // this max is random - justify this (or a higher/lower bound) with numbers
+    // this says: we don't multi-thread until ports scanned is greater than 100
     public static final int MAX_PORTS_CONCURRENCY_USAGE = 100;
 
-    public static final int DEFAULT_TIMEOUT = 200;
+    public static final int DEFAULT_TIMEOUT = 100;
     public static final int TIME_OUT_LOW_LIMIT = 50;
-    public static final int TIME_OUT_HIGH_LIMIT = 1000;
-    public static final int DEFAULT_CONCURRENCY = 100;
+    public static final int TIME_OUT_HIGH_LIMIT = 200;
+    public static final int DEFAULT_CONCURRENCY = 5;
     // for now, will allocate a single SourcePortAllocator as a range of source ports
     public static final SourcePortAllocator sourcePortAllocator = new SourcePortAllocator(MIN, MAX);
 
@@ -64,6 +65,7 @@ public class PortScanner {
         this.sneak = sneak;
     }
 
+    // needs updating now that multiple host scans are supported
     @Scan
     public void scan(@Hosts List<String> hosts, @Port int port) {
         for (String host : hosts) {
@@ -71,6 +73,7 @@ public class PortScanner {
         }
     }
 
+    // needs  updating now that multiple host scans are supported
     @Scan
     public void scan(@Hosts List<String> hosts) {
         for (String host : hosts) {
@@ -119,7 +122,7 @@ public class PortScanner {
                         PortScannerUtil.logInvalidPortNumber(port);
                     }
                 }
-                doShowOutput(results);
+                doShowOutput(results); // update trigger response
             } else {
                 // refactor port scanning logic into a method
                 PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
@@ -154,6 +157,9 @@ public class PortScanner {
         }
     }
 
+    // add (CIDRWildcard hosts, List<String> ports)
+    // add (CIDRWildcard hosts, PortWildcard ports)
+
 
     // too slow - possible performance boost processing both hosts & addresses concurrently
     // currently only processing ports concurrently, given a single hosts. too slow.
@@ -164,17 +170,22 @@ public class PortScanner {
                 hosts.incrementLastOctet();
             }
             PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
+            List<HostModel> results = new ArrayList<>();
             while (hosts.getOctets()[3] < 255) {
                 Inet4Address address = PortScannerUtil.getHostInet4Address(hosts.getAddress());
                 if (ObjectUtils.isNotEmpty(address)) {
+                    String hostAddress = address.getHostAddress();
+                    String hostname = PortScannerUtil.getHostInet4AddressName(hostAddress);
                     for (int port = MIN_PORT; port <= MAX_PORT; port++) {
                         submitTask(scanScheduler, address, port);
                     }
+                    List<PortScanResult> batchResults = scanScheduler.collect(PortScanResult.class);
+                    results.add(triggerResponseWithHostModel(scanScheduler, batchResults, hostAddress, hostname));
                 }
                 hosts.incrementLastOctet();
             }
-            List<PortScanResult> results = scanScheduler.shutdownAndCollect(PortScanResult.class);
-            doShowOutput(results);
+            scanScheduler.shutdownAndCollect(Void.class);
+            triggerResponse(results);
         }
     }
 
@@ -215,18 +226,26 @@ public class PortScanner {
         }
     }
 
+    private void triggerResponse(List<HostModel> batchHostResults) {
+        doShowOutput(batchHostResults);
+    }
+
     private void triggerResponse(PortScanScheduler scanScheduler, List<PortScanResult> results, String hostAddress, String hostAddressName) {
+        HostModel hostModel = triggerResponseWithHostModel(scanScheduler, results, hostAddress, hostAddressName);
+        doShowOutput(hostModel);
+    }
+
+    private HostModel triggerResponseWithHostModel(PortScanScheduler scanScheduler, List<PortScanResult> results, String hostAddress, String hostAddressName) {
         HostIdentity hostIdentity = new HostIdentity.Builder()
                 .hostAddress(hostAddress)
                 .hostname(hostAddressName)
                 .build();
-        HostModel hostModel = new HostModel.Builder()
+        return new HostModel.Builder()
                 .schedulerId(scanScheduler.getSchedulerId())
                 .hostIdentity(hostIdentity)
                 .tasks(results)
-                .durationMillis(scanScheduler.getDurationMillis().orElse(0))
+                .durationMillis(scanScheduler.getDurationMillisBatch().orElse(0))
                 .build();
-        doShowOutput(hostModel);
     }
 
     private void writeToFile(Object obj) {
