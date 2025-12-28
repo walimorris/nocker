@@ -12,6 +12,7 @@ import com.nocker.portscanner.model.HostIdentity;
 import com.nocker.portscanner.model.HostModel;
 import com.nocker.portscanner.scheduler.PortScanScheduler;
 import com.nocker.portscanner.scheduler.PortScanSynAckScheduler;
+import com.nocker.portscanner.tasks.PortRange;
 import com.nocker.portscanner.tasks.PortScanSynAckTask;
 import com.nocker.portscanner.tasks.PortScanSynTask;
 import com.nocker.portscanner.wildcard.CIDRWildcard;
@@ -38,7 +39,7 @@ public class PortScanner {
     private final boolean sneak;
 
     public static final int MIN_PORT = 1;
-    public static final int MAX_PORT = 65536;
+    public static final int MAX_PORT = 65535;
 
     // this max is random - justify this (or a higher/lower bound) with numbers
     // this says: we don't multi-thread until ports scanned is greater than 100
@@ -87,7 +88,7 @@ public class PortScanner {
         if (ObjectUtils.isNotEmpty(hostAddress)) {
             PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
             for (int port = MIN_PORT; port <= MAX_PORT; port++) {
-                submitTask(scanScheduler, hostAddress, port);
+                submitTask(scanScheduler, hostAddress, Collections.singletonList(port));
             }
             List<PortScanResult> results = scanScheduler.shutdownAndCollect(PortScanResult.class);
             doShowOutput(results);
@@ -98,7 +99,7 @@ public class PortScanner {
     public void scan(@Host String host, @Port int port) {
         Inet4Address hostAddress = PortScannerUtil.getHostInet4Address(host);
         if (ObjectUtils.isNotEmpty(hostAddress)) {
-            PortScanResult result = submitTask(hostAddress, port);
+            List<PortScanResult> result = submitTask(hostAddress, Collections.singletonList(port));
             doShowOutput(result);
         } else {
             // should write to standard out for user
@@ -111,27 +112,15 @@ public class PortScanner {
     public void scan(@Host String host, @Ports List<String> ports) {
         Inet4Address hostAddress = PortScannerUtil.getHostInet4Address(host);
         String hostAddressName = PortScannerUtil.getHostInet4AddressName(host);
+        List<Integer> validPorts = PortScannerUtil.convertListOfPortStringsToIntegers(ports);
         if (ObjectUtils.isNotEmpty(hostAddress)) {
             if (ports.size() < MAX_PORTS_CONCURRENCY_USAGE) {
-                List<PortScanResult> results = new ArrayList<>();
-                for (String port : ports) {
-                    if (PortScannerUtil.isValidPortNumber(port)) {
-                        PortScanResult result = submitTask(hostAddress, PortScannerUtil.converPortToInteger(port));
-                        results.add(result);
-                    } else {
-                        PortScannerUtil.logInvalidPortNumber(port);
-                    }
-                }
+                List<PortScanResult> results = submitTask(hostAddress, validPorts);
                 doShowOutput(results); // update trigger response
             } else {
                 // refactor port scanning logic into a method
                 PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
-                for (String port : ports) {
-                    if (PortScannerUtil.isValidPortNumber(port)) {
-                        int p = PortScannerUtil.converPortToInteger(port);
-                        submitTask(scanScheduler, hostAddress, p);
-                    }
-                }
+                submitTask(scanScheduler, hostAddress, validPorts);
                 List<PortScanResult> results = scanScheduler.shutdownAndCollect(PortScanResult.class);
                 triggerResponse(scanScheduler, results, hostAddress.getHostAddress(), hostAddressName);
             }
@@ -144,12 +133,7 @@ public class PortScanner {
         String hostAddressName = PortScannerUtil.getHostInet4AddressName(host);
         if (ObjectUtils.isNotEmpty(inet4Address)) {
             PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
-            int destinationPortLow = ports.getLowPort();
-            int destinationPortHigh = ports.getHighPort();
-            while (destinationPortLow <= destinationPortHigh) {
-                submitTask(scanScheduler, inet4Address, destinationPortLow);
-                destinationPortLow++;
-            }
+            submitTask(scanScheduler, inet4Address, new PortRange(ports.getLowPort(), ports.getHighPort()));
             List<PortScanResult> results = scanScheduler.shutdownAndCollect(PortScanResult.class);
             triggerResponse(scanScheduler, results, inet4Address.getHostAddress(), hostAddressName);
         } else {
@@ -174,13 +158,11 @@ public class PortScanner {
             while (hosts.getOctets()[3] < 255) {
                 Inet4Address address = PortScannerUtil.getHostInet4Address(hosts.getAddress());
                 if (ObjectUtils.isNotEmpty(address)) {
-                    String hostAddress = address.getHostAddress();
-                    String hostname = PortScannerUtil.getHostInet4AddressName(hostAddress);
-                    for (int port = MIN_PORT; port <= MAX_PORT; port++) {
-                        submitTask(scanScheduler, address, port);
-                    }
+                    String hostname = PortScannerUtil.getHostInet4AddressName(address.getHostAddress());
+                    PortRange portRange = new PortRange(MIN_PORT, MAX_PORT);
+                    submitTask(scanScheduler, address, portRange);
                     List<PortScanResult> batchResults = scanScheduler.collect(PortScanResult.class);
-                    results.add(triggerResponseWithHostModel(scanScheduler, batchResults, hostAddress, hostname));
+                    results.add(triggerResponseWithHostModel(scanScheduler, batchResults, address.getHostAddress(), hostname));
                 }
                 hosts.incrementLastOctet();
             }
@@ -205,23 +187,44 @@ public class PortScanner {
         return timeout;
     }
 
-    private void submitTask(PortScanScheduler scanScheduler, Inet4Address inet4Address, int port) {
+    private void submitTask(PortScanScheduler scanScheduler, Inet4Address inet4Address, PortRange portRange) {
         if (sneak) {
-            scanScheduler.submit(new PortScanSynTask(scanScheduler.getSchedulerId(), inet4Address, port,
+            scanScheduler.submit(new PortScanSynTask(scanScheduler.getSchedulerId(), inet4Address, portRange,
                     sourcePortAllocator.getAndIncrement(), timeout));
         } else {
             scanScheduler.submit(new PortScanSynAckTask(scanScheduler.getSchedulerId(), inet4Address,
-                    port, timeout));
+                    portRange, timeout));
         }
     }
 
-    private PortScanResult submitTask(Inet4Address inet4Address, int port) {
+    private void submitTask(PortScanScheduler scanScheduler, Inet4Address inet4Address, List<Integer> ports) {
         if (sneak) {
-            PortScanSynTask task = new PortScanSynTask(null, inet4Address, port, sourcePortAllocator.getAndIncrement(),
+            scanScheduler.submit(new PortScanSynTask(scanScheduler.getSchedulerId(), inet4Address, ports,
+                    sourcePortAllocator.getAndIncrement(), timeout));
+        } else {
+            scanScheduler.submit(new PortScanSynAckTask(scanScheduler.getSchedulerId(), inet4Address,
+                    ports, timeout));
+        }
+    }
+
+    private List<PortScanResult> submitTask(Inet4Address inet4Address, PortRange portRange) {
+        if (sneak) {
+            PortScanSynTask task = new PortScanSynTask(null, inet4Address, portRange, sourcePortAllocator.getAndIncrement(),
                     timeout);
             return task.call();
         } else {
-            PortScanSynAckTask task = new PortScanSynAckTask(null, inet4Address, port, timeout);
+            PortScanSynAckTask task = new PortScanSynAckTask(null, inet4Address, portRange, timeout);
+            return task.call();
+        }
+    }
+
+    private List<PortScanResult> submitTask(Inet4Address inet4Address, List<Integer> ports) {
+        if (sneak) {
+            PortScanSynTask task = new PortScanSynTask(null, inet4Address, ports, sourcePortAllocator.getAndIncrement(),
+                    timeout);
+            return task.call();
+        } else {
+            PortScanSynAckTask task = new PortScanSynAckTask(null, inet4Address, ports, timeout);
             return task.call();
         }
     }

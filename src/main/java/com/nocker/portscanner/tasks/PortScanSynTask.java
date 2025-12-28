@@ -1,6 +1,7 @@
 package com.nocker.portscanner.tasks;
 
 import com.nocker.portscanner.PortScanResult;
+import com.nocker.portscanner.PortScannerUtil;
 import com.nocker.portscanner.PortState;
 import com.nocker.portscanner.packet.Ipv4TcpSynPacket;
 import com.nocker.portscanner.packet.TcpSynSegment;
@@ -13,40 +14,71 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.net.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 
-public class PortScanSynTask implements PortScanTask, Callable<PortScanResult>, Serializable {
+public class PortScanSynTask implements PortScanTask, Callable<List<PortScanResult>>, Serializable {
     private static final Logger LOGGER = LoggerFactory.getLogger(PortScanSynTask.class);
 
     private final Inet4Address destinationHost;
-    private final int destinationPort;
+    private final List<Integer> destinationPorts;
+    private final PortRange destinationPortRange;
     private final int sourcePort;
     private final int timeout;
     private final UUID schedulerId;
     private final UUID taskId = UuidUtil.getTimeBasedUuid();
     // add a tll
 
-    public PortScanSynTask(UUID schedulerId, Inet4Address destinationHost, int destinationPort, int sourcePort,
+    public PortScanSynTask(UUID schedulerId, Inet4Address destinationHost, List<Integer> destinationPorts, int sourcePort,
                            int timeout) {
         this.schedulerId = schedulerId;
         this.destinationHost = destinationHost;
-        this.destinationPort = destinationPort;
+        this.destinationPorts = destinationPorts;
+        this.destinationPortRange = null;
+        this.sourcePort = sourcePort;
+        this.timeout = timeout;
+    }
+
+    public PortScanSynTask(UUID schedulerId, Inet4Address destinationHost, PortRange destinationPortRange, int sourcePort,
+                           int timeout) {
+        this.schedulerId = schedulerId;
+        this.destinationHost = destinationHost;
+        this.destinationPorts = null;
+        this.destinationPortRange = destinationPortRange;
         this.sourcePort = sourcePort;
         this.timeout = timeout;
     }
 
     @Override
-    public PortScanResult call() {
-        LOGGER.info("Starting task in sneak mode: {}", this);
+    public List<PortScanResult> call() {
         long start = System.currentTimeMillis();
-        PortState finalState = PortState.FILTERED;
+        List<PortScanResult> results = new ArrayList<>();
+        if (destinationPortRange != null && destinationPorts == null) {
+            int lowDestinationPort = destinationPortRange.getLow();
+            int highDestinationPort = destinationPortRange.getHigh();
+            while (lowDestinationPort <= highDestinationPort) {
+                iteratePort(results, lowDestinationPort, start);
+                lowDestinationPort++;
+            }
+        } else {
+            if (destinationPorts != null && destinationPortRange == null) {
+                for (int destinationPort : destinationPorts) {
+                    iteratePort(results, destinationPort, start);
+                }
+            }
+        }
+        return results;
+    }
 
+    private void iteratePort(List<PortScanResult> ongoingResults, int destinationPort, long start) {
+        PortState finalState = PortState.FILTERED;
         TcpSynSegment tcpSynSegment = new TcpSynSegment((short) sourcePort, (short) destinationPort, destinationHost);
         Ipv4TcpSynPacket ipv4TcpSynPacket = generateIpv4TcpSynPacketFromTcpSynSegment(tcpSynSegment);
         PcapHandle pcapHandle = openHandle(ipv4TcpSynPacket);
         try {
-            pcapHandle.setFilter(generateFilter(), BpfProgram.BpfCompileMode.OPTIMIZE);
+            pcapHandle.setFilter(generateFilter(destinationPort), BpfProgram.BpfCompileMode.OPTIMIZE);
             pcapHandle.sendPacket(ipv4TcpSynPacket.createIpv4Packet());
             long deadline = System.currentTimeMillis() + timeout;
             while (System.currentTimeMillis() < deadline) {
@@ -77,14 +109,14 @@ public class PortScanSynTask implements PortScanTask, Callable<PortScanResult>, 
             }
         }
         long duration = System.currentTimeMillis() - start;
-        return new PortScanResult(
+        ongoingResults.add(new PortScanResult(
                 schedulerId,
                 taskId,
                 destinationHost,
                 destinationPort,
                 finalState,
                 duration
-        );
+        ));
     }
 
     protected Ipv4TcpSynPacket generateIpv4TcpSynPacketFromTcpSynSegment(TcpSynSegment tcpSynSegment) {
@@ -116,7 +148,7 @@ public class PortScanSynTask implements PortScanTask, Callable<PortScanResult>, 
         return pcapHandle;
     }
 
-    protected String generateFilter() {
+    protected String generateFilter(int destinationPort) {
         StringBuilder filter = new StringBuilder();
         filter.append("tcp and src host ").append(destinationHost.getHostAddress());
         filter.append(" and src port ").append(destinationPort);
@@ -144,12 +176,17 @@ public class PortScanSynTask implements PortScanTask, Callable<PortScanResult>, 
     }
 
     @Override
+    public PortRange getDestinationPortRange() {
+        return PortScannerUtil.getPortRange(destinationPorts);
+    }
+
+    @Override
     public String toString() {
         return "PortScanSynTask{" +
                 "taskId=" + taskId +
                 ", schedulerId=" + schedulerId +
                 ", destinationHost=" + destinationHost.getHostAddress() +
-                ", destinationPort=" + destinationPort +
+                ", destinationPorts=" + getDestinationPortRange() +
                 ", sourcePort=" + sourcePort +
                 ", timeout=" + timeout +
                 '}';

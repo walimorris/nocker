@@ -1,5 +1,6 @@
 package com.nocker.portscanner;
 
+import com.nocker.portscanner.tasks.PortRange;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.pcap4j.core.PcapAddress;
@@ -10,7 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.*;
-import java.util.Arrays;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public final class PortScannerUtil {
     private static final Logger LOGGER = LoggerFactory.getLogger(PortScannerUtil.class);
@@ -28,10 +30,22 @@ public final class PortScannerUtil {
                 .toArray(Integer[]::new);
     }
 
+    public static List<Integer> convertToIntegerList(List<String> strings) {
+        return strings.stream()
+                .map(Integer::valueOf)
+                .collect(Collectors.toList());
+    }
+
     public static String[] convertToStringArray(Integer[] objects) {
         return Arrays.stream(objects)
                 .map(String::valueOf)
                 .toArray(String[]::new);
+    }
+
+    public static List<String> convertToStringList(List<Integer> integers) {
+        return integers.stream()
+                .map(String::valueOf)
+                .collect(Collectors.toList());
     }
 
     public static String stringifyArray(Integer[] objects) {
@@ -163,6 +177,51 @@ public final class PortScannerUtil {
         return true;
     }
 
+    public static boolean allValidPortNumbers(List<?> ports) {
+        if (ObjectUtils.isEmpty(ports)) {
+            throw new IllegalStateException("Cannot infer port data type from empty list");
+        }
+        Object obj = ports.get(0);
+        if (!(obj instanceof Integer) && !(obj instanceof String)) {
+            throw new IllegalStateException("Port range Lists must be string or integer types");
+        }
+        List<Integer> portsList = (List<Integer>) ports;
+        for (int p : portsList) {
+            if (!isValidPortNumber(p)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static List<String> filterInvalidPorts(List<String> ports) {
+        List<String> validPorts = new ArrayList<>();
+        for (String port : ports) {
+            if (isValidPortNumber(port)) {
+                validPorts.add(port);
+            }
+        }
+        return validPorts;
+    }
+
+    public static List<Integer> convertListOfPortStringsToIntegers(List<String> ports) {
+        List<String> validPorts = filterInvalidPorts(ports);
+        List<Integer> convertedPorts = new ArrayList<>();
+        for (String port : validPorts) {
+            convertedPorts.add(converPortToInteger(port));
+        }
+        return convertedPorts;
+    }
+
+    public static List<String> sortStringListPorts(List<String> ports) {
+        List<Integer> integerPorts = sortIntegerListPorts(convertListOfPortStringsToIntegers(ports));
+        return convertToStringList(integerPorts);
+    }
+
+    public static List<Integer> sortIntegerListPorts(List<Integer> ports) {
+        return ports.stream().sorted().collect(Collectors.toList());
+    }
+
     public static boolean allIsValidPortNumbers(int... ports) {
         for (int port : ports) {
             if (!isValidPortNumber(port)) {
@@ -170,6 +229,23 @@ public final class PortScannerUtil {
             }
         }
         return true;
+    }
+
+    public static PortRange getPortRange(List<?> ports) {
+        if (ObjectUtils.isEmpty(ports)) {
+            throw new IllegalStateException("Cannot infer port data type from empty list");
+        }
+        Object obj = ports.get(0);
+        if (!(obj instanceof Integer) && !(obj instanceof String)) {
+            throw new IllegalStateException("Port range Lists must be string or integer types");
+        }
+        if (obj instanceof String) {
+            List<String> sortedStringPorts = sortStringListPorts((List<String>) ports);
+            return new PortRange(converPortToInteger(sortedStringPorts.get(0)),
+                    converPortToInteger(sortedStringPorts.get(sortedStringPorts.size() - 1)));
+        }
+        List<Integer> sortedIntPorts = sortIntegerListPorts((List<Integer>) ports);
+        return new PortRange(sortedIntPorts.get(0), sortedIntPorts.get(sortedIntPorts.size() - 1));
     }
 
     public static void logInvalidPortNumber(String port) {

@@ -15,4 +15,12 @@ public interface PortScanTask {
      * @return a string representation of the scheduler's unique identifier
      */
     String getSchedulerIdText();
+
+    /**
+     * Retrieves the range of destination ports associated with the port scan task.
+     *
+     * @return the range of destination ports as a {@link PortRange} object; it defines
+     *         the lower and upper bounds of the ports being scanned.
+     */
+    PortRange getDestinationPortRange();
 }

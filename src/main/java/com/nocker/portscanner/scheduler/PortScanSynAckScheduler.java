@@ -35,17 +35,19 @@ public class PortScanSynAckScheduler implements PortScanScheduler {
     public <T> void submit(Callable<T> task) {
         long now = System.nanoTime();
         startNanos.compareAndSet(0, now);
-        latestStartNanos.set(now); // batch duration monitor
-         long batch = currentBatch.get();
-         BatchState state = batches.computeIfAbsent(batch, b -> new BatchState());
-         Future<T> future = executorService.submit(() -> {
-             try {
-                 return task.call();
-             } finally {
-                 state.onComplete();
-             }
-         });
-         state.onSubmit(future);
+        long batch = currentBatch.get();
+        BatchState state = batches.computeIfAbsent(batch, b -> {
+            latestStartNanos.set(now);
+            return new BatchState();
+        });
+        Future<T> future = executorService.submit(() -> {
+            try {
+                return task.call();
+            } finally {
+                state.onComplete();
+            }
+        });
+        state.onSubmit(future);
     }
 
     @Override
@@ -71,18 +73,26 @@ public class PortScanSynAckScheduler implements PortScanScheduler {
             state.done.await();
             for (Future<?> future : state.futures) {
                 Object result = future.get();
-                if (resultType.isInstance(result)) {
-                    results.add(resultType.cast(result));
+                if (result != null) {
+                    if (result instanceof List) {
+                        for (Object item : (List<?>) result) {
+                            if (resultType.isInstance(item)) {
+                                results.add(resultType.cast(item));
+                            }
+                        }
+                    } else if (resultType.isInstance(result)) {
+                        results.add(resultType.cast(result));
+                    }
                 }
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (ExecutionException e) {
-            // do something
+            // do something useful here
         } finally {
             currentBatch.incrementAndGet();
+            stopNanos.set(System.nanoTime());
         }
-        stopNanos.set(System.nanoTime());
         return results;
     }
 
