@@ -18,44 +18,103 @@ public final class PortScannerUtil {
     private static final Logger LOGGER = LoggerFactory.getLogger(PortScannerUtil.class);
 
     private static final int MIN_PORT = 1;
-    private static final int MAX_PORT = 65536;
+    private static final int MAX_PORT = 65535;
 
     private PortScannerUtil() {
         throw new AssertionError("PortScanUtil cannot be instantiated");
     }
 
+    /**
+     * Converts an array of {@code String} objects into an array of {@code Integer} objects.
+     * Each string in the input array is parsed into an integer.
+     *
+     * @param objects an array of {@code String} objects to be converted to {@code Integer} objects
+     * @return an array of {@code Integer} objects parsed from the input string array
+     * @throws NumberFormatException if any string in the input array cannot be parsed as an integer
+     */
     public static Integer[] convertToIntegerArray(String[] objects) {
         return Arrays.stream(objects)
                 .map(Integer::parseInt)
                 .toArray(Integer[]::new);
     }
 
+    /**
+     * Converts a list of {@code String} objects into a list of {@code Integer} objects.
+     * Each string in the input list is parsed into an integer.
+     *
+     * @param strings a list of {@code String} objects to be converted to {@code Integer} objects
+     * @return a list of {@code Integer} objects parsed from the input string list
+     * @throws NumberFormatException if any string in the input list cannot be parsed as an integer
+     */
     public static List<Integer> convertToIntegerList(List<String> strings) {
         return strings.stream()
                 .map(Integer::valueOf)
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Converts an array of {@code Integer} objects into an array of {@code String} objects.
+     * Each integer in the input array is transformed into its string representation.
+     *
+     * @param objects an array of {@code Integer} objects to be converted to {@code String} objects
+     * @return an array of {@code String} objects representing the string equivalent of each integer in the input array
+     */
     public static String[] convertToStringArray(Integer[] objects) {
         return Arrays.stream(objects)
                 .map(String::valueOf)
                 .toArray(String[]::new);
     }
 
+    /**
+     * Converts a list of {@code Integer} objects into a list of {@code String} objects.
+     * Each integer in the input list is transformed into its string representation.
+     *
+     * @param integers a list of {@code Integer} objects to be converted to {@code String} objects
+     * @return a list of {@code String} objects representing the string equivalents of each integer
+     */
     public static List<String> convertToStringList(List<Integer> integers) {
         return integers.stream()
                 .map(String::valueOf)
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Converts an array of {@code Integer} objects into a single {@code String},
+     * where each integer is represented as its string equivalent and concatenated
+     * with a period (".") delimiter.
+     *
+     * @param objects an array of {@code Integer} objects to be converted into
+     *                a single {@code String} representation
+     * @return a {@code String} formed by concatenating the string equivalents of
+     *         the integers in the input array, separated by periods
+     */
     public static String stringifyArray(Integer[] objects) {
         return String.join(".", convertToStringArray(objects));
     }
 
+    /**
+     * Converts an array of {@code String} objects into a single {@code String},
+     * where each element is concatenated and separated by a period (".") delimiter.
+     *
+     * @param objects an array of {@code String} objects to be joined into a single string
+     * @return a {@code String} that is the result of concatenating all elements of the input
+     *         array, separated by periods
+     */
     public static String stringifyArray(String[] objects) {
         return String.join(".", objects);
     }
 
+    /**
+     * Resolves the IP address for the given hostname. If the host is recognized as
+     * the local machine, the local address is returned. Otherwise, it attempts to
+     * resolve the hostname to its corresponding network address.
+     *
+     * @param host the name of the host to resolve; can be a hostname or IP address
+     *             as a string. If the host is determined to be "localhost" or its
+     *             equivalent, it resolves to the local address.
+     * @return an {@code InetAddress} representing the resolved address of the
+     *         specified host, or {@code null} if the hostname cannot be resolved.
+     */
     public static InetAddress getHostAddress(String host) {
         InetAddress hostAddress = null;
         try {
@@ -66,6 +125,18 @@ public final class PortScannerUtil {
         return hostAddress;
     }
 
+    /**
+     * Resolves the IPv4 address of the specified host. If the host is recognized
+     * as the local machine, the local IPv4 address is returned. Otherwise, it
+     * attempts to resolve the hostname or IP address to its corresponding IPv4
+     * address.
+     *
+     * @param host the name of the host to resolve; can be a hostname or an
+     *             IPv4 address as a string. If the host is determined to be
+     *             "localhost" or its equivalent, it resolves to the local address.
+     * @return an {@code Inet4Address} representing the resolved IPv4 address of
+     *         the specified host, or {@code null} if the hostname cannot be resolved.
+     */
     public static Inet4Address getHostInet4Address(String host) {
         Inet4Address hostAddress = null;
         try {
@@ -76,6 +147,19 @@ public final class PortScannerUtil {
         return hostAddress;
     }
 
+    /**
+     * Resolves the hostname for the specified IPv4 host. If the given host is
+     * recognized as the local machine (e.g., "localhost"), this method returns
+     * the local machine's hostname. Otherwise, it attempts to resolve the
+     * hostname for the provided host address.
+     *
+     * @param host the name of the host to resolve; can be a hostname or an
+     *             IPv4 address as a string. If the host is determined to
+     *             be "localhost" or its equivalent, it returns the hostname
+     *             of the local machine.
+     * @return the hostname of the specified host as a string, or null if the
+     *         hostname cannot be resolved.
+     */
     public static String getHostInet4AddressName(String host) {
         String hostAddressName = null;
         try {
@@ -86,6 +170,16 @@ public final class PortScannerUtil {
         return hostAddressName;
     }
 
+    /**
+     * Determines if the provided hostname corresponds to "localhost".
+     * The method checks if the input string is non-blank and, if so,
+     * evaluates whether it contains "localhost" (case-insensitive).
+     *
+     * @param host the hostname or IP address as a string to be checked.
+     *             A null or blank string will return false.
+     * @return {@code true} if the provided hostname corresponds to "localhost"
+     *         or contains "localhost", {@code false} otherwise.
+     */
     private static boolean isLocalHost(String host) {
         if (StringUtils.isNotBlank(host)) {
             host = host.toLowerCase();
@@ -150,7 +244,14 @@ public final class PortScannerUtil {
         return null;
     }
 
-    // invalid port will return 0
+    /**
+     * Converts a port number provided as a {@code String} into an {@code int}.
+     * If the input string cannot be parsed into an integer, it logs the invalid port
+     * using {@code logInvalidPortNumber} and returns 0.
+     *
+     * @param p the port number as a {@code String} to be converted to an {@code int}
+     * @return the parsed port number as an {@code int}, or 0 if the input is invalid
+     */
     public static int converPortToInteger(String p) {
         try {
             return Integer.parseInt(p);
@@ -160,14 +261,38 @@ public final class PortScannerUtil {
         }
     }
 
+    /**
+     * Checks if the given port number, represented as a {@code String}, is valid.
+     * A valid port number must be within the range of acceptable port numbers defined by {@code MIN_PORT} and {@code MAX_PORT}.
+     * This method converts the string representation of the port to an integer before validation.
+     *
+     * @param p the port number as a {@code String} to be validated
+     * @return {@code true} if the port number is valid; {@code false} otherwise
+     */
     public static boolean isValidPortNumber(String p) {
         return isValidPortNumber(converPortToInteger(p));
     }
 
+    /**
+     * Validates whether the given port number is within the valid range
+     * of acceptable port numbers as defined by MIN_PORT and MAX_PORT.
+     *
+     * @param p the port number represented as an {@code int} to be validated
+     * @return {@code true} if the port number is valid; {@code false} otherwise
+     */
     public static boolean isValidPortNumber(int p) {
         return (p >= MIN_PORT && p <= MAX_PORT);
     }
 
+    /**
+     * Checks if all provided strings represent valid port numbers.
+     *
+     * A valid port number is typically an integer within the range
+     * of 1 to 65535, represented as a string.
+     *
+     * @param ports an array of strings to be checked as valid port numbers
+     * @return true if all strings represent valid port numbers, otherwise false
+     */
     public static boolean allValidPortNumbers(String... ports) {
         for (String port : ports) {
             if (!isValidPortNumber(port)) {
@@ -177,6 +302,17 @@ public final class PortScannerUtil {
         return true;
     }
 
+    /**
+     * Validates whether all items in the provided list of ports are valid port numbers.
+     * A valid port number is typically an integer within the range of 1 to 65535.
+     * The method supports lists containing integers or strings representing port numbers.
+     *
+     * @param ports the list of port objects to validate. It should contain either integers
+     *              or strings. If the list is empty or contains unsupported types, an
+     *              IllegalStateException will be thrown.
+     * @return {@code true} if all items in the list are valid port numbers, otherwise {@code false}.
+     * @throws IllegalStateException if the list is empty or contains unsupported types.
+     */
     public static boolean allValidPortNumbers(List<?> ports) {
         if (ObjectUtils.isEmpty(ports)) {
             throw new IllegalStateException("Cannot infer port data type from empty list");
@@ -194,6 +330,12 @@ public final class PortScannerUtil {
         return true;
     }
 
+    /**
+     * Filters and returns a list of valid port numbers from the given list of port strings.
+     *
+     * @param ports the list of port numbers as strings to be validated
+     * @return a list of valid port numbers as strings
+     */
     public static List<String> filterInvalidPorts(List<String> ports) {
         List<String> validPorts = new ArrayList<>();
         for (String port : ports) {
@@ -204,6 +346,13 @@ public final class PortScannerUtil {
         return validPorts;
     }
 
+    /**
+     * Converts a list of port numbers represented as strings into a list of integers.
+     * Invalid port strings are filtered out before conversion.
+     *
+     * @param ports the list of port numbers as strings to be converted
+     * @return a list of integers representing the valid port numbers
+     */
     public static List<Integer> convertListOfPortStringsToIntegers(List<String> ports) {
         List<String> validPorts = filterInvalidPorts(ports);
         List<Integer> convertedPorts = new ArrayList<>();
@@ -213,15 +362,38 @@ public final class PortScannerUtil {
         return convertedPorts;
     }
 
+    /**
+     * Sorts a list of port strings numerically and returns the sorted list
+     * as strings.
+     *
+     * @param ports the list of port strings to be sorted
+     * @return a new list of sorted port strings
+     */
     public static List<String> sortStringListPorts(List<String> ports) {
         List<Integer> integerPorts = sortIntegerListPorts(convertListOfPortStringsToIntegers(ports));
         return convertToStringList(integerPorts);
     }
 
+    /**
+     * Sorts a list of integers in ascending order.
+     *
+     * @param ports the list of integers to be sorted
+     * @return a new list of integers sorted in ascending order
+     */
     public static List<Integer> sortIntegerListPorts(List<Integer> ports) {
         return ports.stream().sorted().collect(Collectors.toList());
     }
 
+    /**
+     * Checks if all provided integers are valid port numbers.
+     *
+     * A valid port number is assumed to be within a specific range as defined
+     * by the implementation of the isValidPortNumber method.
+     *
+     * @param ports an array of integers representing port numbers to validate
+     * @return true if all integers in the provided array are valid port numbers,
+     *         false if any of the integers fail validation
+     */
     public static boolean allIsValidPortNumbers(int... ports) {
         for (int port : ports) {
             if (!isValidPortNumber(port)) {
@@ -231,6 +403,19 @@ public final class PortScannerUtil {
         return true;
     }
 
+    /**
+     * Determines the port range from a given list of ports. The list can contain
+     * either integers or strings representing port values. The method processes
+     * the list to find the minimum and maximum ports, creating a PortRange object.
+     *
+     * @param ports a list containing port values, either as integers or strings.
+     *              The list must not be empty and must contain only elements of
+     *              the same data type (either all integers or all strings).
+     * @return a PortRange object that represents the range of ports, with the
+     *         minimum and maximum ports derived from the input list.
+     * @throws IllegalStateException if the provided list is empty, or if the elements
+     *                               are of unsupported types, or if they are of mixed types.
+     */
     public static PortRange getPortRange(List<?> ports) {
         if (ObjectUtils.isEmpty(ports)) {
             throw new IllegalStateException("Cannot infer port data type from empty list");
