@@ -1,46 +1,32 @@
 package com.nocker.portscanner.scheduler;
 
+import com.nocker.portscanner.PortScanResult;
+
 import java.util.List;
 import java.util.OptionalLong;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public interface PortScanScheduler {
 
     /**
-     * Submits a task for execution to the scheduler's executor service.
-     * The task is represented as a {@link Callable} that can return a result upon completion.
-     * Submitted tasks are tracked by the scheduler for later processing or result retrieval.
+     * Submits a port scanning task to the scheduler for asynchronous execution.
      *
-     * @param <T> the type of the result produced by the task
-     * @param task the task to submit for execution, implemented as a {@link Callable}
+     * @param task the task to be executed, represented as a {@code Callable}
+     *             that produces a {@code List<PortScanResult>} upon completion
      */
-    <T> void submit(Callable<T> task);
+    void submit(Callable<List<PortScanResult>> task);
 
     /**
-     * Shuts down the scheduler's executor service and collects the results of all submitted tasks
-     * that match the specified result type. The executor service will not accept new tasks after
-     * the shutdown is initiated.
+     * Terminates the scheduler, blocks until all submitted tasks are completed, and collects their results.
      *
-     * @param <T> the type of results to collect
-     * @param resultType the class type of results to be collected
-     * @return a list of results of type {@code T} from the completed tasks
+     * @param taskCount the total number of tasks to wait for and collect results from.
+     *                  This value should reflect the number of tasks submitted to the scheduler.
+     * @return a list of {@link PortScanResult} objects containing the outcomes of the completed port scanning tasks.
      */
-    <T> List<T> shutdownAndCollect(Class<T> resultType);
-
-    /**
-     * Collects the results of completed tasks that match the specified result type.
-     * The results are retrieved from the currently managed batch of tasks.
-     * If a task's result matches the provided type, it is added to the returned list.
-     * The current batch is finalized after the collection completes, and a new batch is initiated.
-     *
-     * @param <T> the type of results to collect
-     * @param resultType the class type of results to be collected
-     * @return a list of results of type {@code T} from the completed tasks,
-     *         or {@code null} if an error occurs during task result retrieval
-     */
-    <T> List<T> collect(Class<T> resultType);
+    List<PortScanResult> shutdownAndCollect(AtomicInteger taskCount);
 
     /**
      * Retrieves the duration of time in milliseconds that elapsed between the start

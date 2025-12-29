@@ -1,20 +1,21 @@
 package com.nocker.portscanner.scheduler;
 
-import com.nocker.portscanner.BatchState;
+import com.nocker.portscanner.PortScanResult;
 import com.nocker.portscanner.PortScanner;
 import org.apache.logging.log4j.core.util.UuidUtil;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * {@code PortScanSynAckScheduler} schedules valid SYN or SYN ACK tasks.
  */
+// review: duration times - because of update
 public class PortScanSynAckScheduler implements PortScanScheduler {
     private final ExecutorService executorService;
-    private final AtomicLong currentBatch = new AtomicLong(0);
-    private final Map<Long, BatchState> batches = new ConcurrentHashMap<>();
+    private final CompletionService<List<PortScanResult>> completionService;
     private final int concurrency; // adjustable
     private final UUID schedulerId = UuidUtil.getTimeBasedUuid();
 
@@ -22,77 +23,44 @@ public class PortScanSynAckScheduler implements PortScanScheduler {
     private final AtomicLong latestStartNanos = new AtomicLong(0);
     private final AtomicLong stopNanos = new AtomicLong(0);
 
-     public PortScanSynAckScheduler() {
-         this(PortScanner.DEFAULT_CONCURRENCY);
-     }
+    public PortScanSynAckScheduler() {
+        this(PortScanner.DEFAULT_CONCURRENCY);
+    }
 
     public PortScanSynAckScheduler(int concurrency) {
          this.concurrency = concurrency;
          this.executorService = Executors.newFixedThreadPool(concurrency);
+         this.completionService = new ExecutorCompletionService<>(executorService);
     }
 
     @Override
-    public <T> void submit(Callable<T> task) {
+    public void submit(Callable<List<PortScanResult>> task) {
         long now = System.nanoTime();
         startNanos.compareAndSet(0, now);
-        long batch = currentBatch.get();
-        BatchState state = batches.computeIfAbsent(batch, b -> {
-            latestStartNanos.set(now);
-            return new BatchState();
-        });
-        Future<T> future = executorService.submit(() -> {
-            try {
-                return task.call();
-            } finally {
-                state.onComplete();
-            }
-        });
-        state.onSubmit(future);
+        completionService.submit(task);
     }
 
     @Override
-    public <T> List<T> shutdownAndCollect(Class<T> resultType) {
-        List<T> results = collect(resultType);
-        executorService.shutdown();
+    public List<PortScanResult> shutdownAndCollect(AtomicInteger taskCount) {
+        List<PortScanResult> results = new ArrayList<>();
         try {
-            executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-        stopNanos.set(System.nanoTime());
-        return results;
-    }
-
-    @Override
-    public <T> List<T> collect(Class<T> resultType) {
-        List<T> results = new ArrayList<>();
-        long batch = currentBatch.get();
-        BatchState state = batches.computeIfAbsent(batch, b -> new BatchState());
-        state.seal();
-        try {
-            state.done.await();
-            for (Future<?> future : state.futures) {
-                Object result = future.get();
-                if (result != null) {
-                    if (result instanceof List) {
-                        for (Object item : (List<?>) result) {
-                            if (resultType.isInstance(item)) {
-                                results.add(resultType.cast(item));
-                            }
-                        }
-                    } else if (resultType.isInstance(result)) {
-                        results.add(resultType.cast(result));
-                    }
+            int i = 0;
+            while (i < taskCount.get()) {
+                Future<List<PortScanResult>> future = completionService.take();
+                List<PortScanResult> tasksResults = future.get();
+                if (tasksResults != null) {
+                    results.addAll(tasksResults);
                 }
+                i++;
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (ExecutionException e) {
-            // do something useful here
+            // log something useful
         } finally {
-            currentBatch.incrementAndGet();
-            stopNanos.set(System.nanoTime());
+            executorService.shutdown();
         }
+        stopNanos.set(System.nanoTime());
         return results;
     }
 

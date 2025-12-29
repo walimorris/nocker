@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 
+// review: duration times - because of update
 public class PortScanSynTask implements PortScanTask, Callable<List<PortScanResult>>, Serializable {
     private static final Logger LOGGER = LoggerFactory.getLogger(PortScanSynTask.class);
 

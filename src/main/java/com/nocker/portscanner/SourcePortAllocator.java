@@ -24,14 +24,14 @@ public class SourcePortAllocator {
     private final int maxPort;
     private final AtomicInteger c;
 
-    public static final int MIN = 49152;
-    public static final int MAX = 65535;
+    public static final int MIN_EPHEMERAL_PORT = 49152;
+    public static final int MAX_EPHEMERAL_PORT = 65535;
 
     public SourcePortAllocator(int min, int max) {
-        if (min >= max || min < MIN || max > MAX) {
+        if (min >= max || min < MIN_EPHEMERAL_PORT || max > MAX_EPHEMERAL_PORT) {
             LOGGER.error("Invalid port allocation range: [{} - {}] ", min, max);
             throw new IllegalArgumentException("Source port allocation must be in a valid range: [" +
-                    MIN + " - " + MAX + "]");
+                    MIN_EPHEMERAL_PORT + " - " + MAX_EPHEMERAL_PORT + "]");
         }
         this.minPort = min;
         this.maxPort = max;

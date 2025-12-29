@@ -14,6 +14,9 @@ import java.net.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+// review: ensure filtering logic is uniform across methods that convert port types (String -> Integer | Integer -> String)
+// review: lightly leave useful comments for methods that combine logic. If ports are being filtered before sorting, users
+// of that method should know
 public final class PortScannerUtil {
     private static final Logger LOGGER = LoggerFactory.getLogger(PortScannerUtil.class);
 
@@ -86,7 +89,7 @@ public final class PortScannerUtil {
         return hostAddressName;
     }
 
-    private static boolean isLocalHost(String host) {
+    public static boolean isLocalHost(String host) {
         if (StringUtils.isNotBlank(host)) {
             host = host.toLowerCase();
             return host.contains("localhost");
@@ -192,6 +195,10 @@ public final class PortScannerUtil {
     public static List<String> sortStringListPorts(List<String> ports) {
         List<Integer> integerPorts = sortIntegerListPorts(convertListOfPortStringsToIntegers(ports));
         return convertToStringList(integerPorts);
+    }
+
+    public static List<Integer> sortStringListPortsToIntegerList(List<String> ports) {
+        return sortIntegerListPorts(convertListOfPortStringsToIntegers(ports));
     }
 
     public static List<Integer> sortIntegerListPorts(List<Integer> ports) {
