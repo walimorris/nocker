@@ -1,11 +1,11 @@
 package com.nocker.portscanner;
 
 import com.nocker.cli.formatter.OutputFormatter;
-import com.nocker.portscanner.annotation.arguements.Host;
-import com.nocker.portscanner.annotation.arguements.Hosts;
-import com.nocker.portscanner.annotation.arguements.Port;
+import com.nocker.portscanner.annotation.arguments.Host;
+import com.nocker.portscanner.annotation.arguments.Hosts;
+import com.nocker.portscanner.annotation.arguments.Port;
 import com.nocker.portscanner.command.InvocationCommand;
-import com.nocker.portscanner.annotation.arguements.Ports;
+import com.nocker.portscanner.annotation.arguments.Ports;
 import com.nocker.portscanner.annotation.commands.CIDRScan;
 import com.nocker.portscanner.annotation.commands.Scan;
 import com.nocker.portscanner.model.HostIdentity;

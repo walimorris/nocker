@@ -1,4 +1,4 @@
-package com.nocker.portscanner.annotation.arguements;
+package com.nocker.portscanner.annotation.arguments;
 
 import com.nocker.annotations.NockerArg;
 

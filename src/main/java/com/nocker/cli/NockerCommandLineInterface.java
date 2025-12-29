@@ -2,7 +2,7 @@ package com.nocker.cli;
 
 import com.nocker.Flag;
 import com.nocker.OperatingSystemUtils;
-import com.nocker.annotations.AnnotationRetriever;
+import com.nocker.command.CommandEngine;
 import com.nocker.cli.formatter.HumanReadableFormatter;
 import com.nocker.cli.formatter.JsonFormatter;
 import com.nocker.cli.formatter.OutputFormatter;
@@ -24,7 +24,7 @@ public final class NockerCommandLineInterface {
     public static int run(String[] args) {
         if (OperatingSystemUtils.isMacOs()) {
             CommandLineInput commandLineInput = new CommandLineInput(args);
-            InvocationCommand invocationCommand = AnnotationRetriever.retrieve(commandLineInput);
+            InvocationCommand invocationCommand = CommandEngine.retrieve(commandLineInput);
             String outPath = invocationCommand.getCommandLineInput()
                     .getFlags()
                     .getOrDefault(Flag.OUT.getFullName(), null);

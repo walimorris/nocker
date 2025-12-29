@@ -1,4 +1,4 @@
-package com.nocker.portscanner.annotation.arguements;
+package com.nocker.portscanner.annotation.arguments;
 
 import com.nocker.annotations.NockerArg;
 
@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.PARAMETER)
 @NockerArg
-public @interface Port {
-    String name() default "port";
+public @interface Host {
+    String name() default "host";
     boolean required() default true;
 }

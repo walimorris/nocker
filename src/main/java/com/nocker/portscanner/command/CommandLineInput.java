@@ -37,13 +37,13 @@ public class CommandLineInput {
     // example 'nocker scan --host=localhost --port=8080 -ax'
     // -ax is a special argument with enhancements on the
     // fully qualified commandLine input
-    public Map<String, String> getArguments() {
-        Map<String, String> arguments = new HashMap<>();
+    public LinkedHashMap<String, String> getArguments() {
+        LinkedHashMap<String, String> arguments = new LinkedHashMap<>();
         List<String> shortenedInput = shortenInput();
         if (CollectionUtils.isNotEmpty(shortenedInput)) {
             for (String token : shortenedInput) {
                 if (!fromFlagToken(token).isPresent()) {
-                    addArgToken(token, arguments);
+                    addNormalizedArgToken(token, arguments);
                 }
             }
         }
@@ -61,7 +61,7 @@ public class CommandLineInput {
                 String token = shortenedInput.get(i);
                 Optional<Flag> flag = fromFlagToken(token);
                 if (flag.isPresent()) {
-                    boolean addedWithArgNormalization = addArgToken(token, flagsHash);
+                    boolean addedWithArgNormalization = addNormalizedArgToken(token, flagsHash);
                     if (!addedWithArgNormalization) {
                         addFlagToken(token, flag.get(), flagsHash, shortenedInput.get(i+1));
                     }
@@ -78,7 +78,9 @@ public class CommandLineInput {
         return token.trim();
     }
 
-    private boolean addArgToken(String token, Map<String, String> hash) {
+    // normalized arg token strip the prepended decorations (--, =)
+    // nocker scan --host=localhost --port=8080
+    private boolean addNormalizedArgToken(String token, Map<String, String> hash) {
         if (token.startsWith("--") && token.contains("=")) {
             String argumentValue;
             String argument;
