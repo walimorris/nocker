@@ -17,6 +17,10 @@ public final class CommandLineInput {
     private final LinkedHashMap<String, String> arguments;
     private final LinkedHashMap<String, String> flags;
 
+    public static final String ARG_SEPARATOR = "=";
+    public static final String SINGLE_DASH = "-";
+    public static final String DOUBLE_DASH = "--";
+
     // move to enum
     private static final Set<String> legalMethods = new HashSet<>(Arrays.asList(
             "scan",
@@ -74,14 +78,17 @@ public final class CommandLineInput {
     }
 
     /**
-     * This method is provided the origin command input and a {@link LinkedHashMap} of the validated command arguments.
-     * The initial command passed to {@code nocker} is parsed and utilizes the {@link MethodResolver} to validate that
-     * the method supplied after the {@code nocker} namespace is a valid option. If so, all methods from that class are
-     * read and matched against the qualified and validated command arguments. if a match is not found, a
-     * {@link InvalidCommandException} is thrown because there was no suitable match for the given arguments.
+     * This method is provided the origin command input and a {@link LinkedHashMap} of the
+     * validated command arguments.The initial command passed to {@code nocker} is parsed
+     * and utilizes the {@link MethodResolver} to validate that the method supplied after
+     * the {@code nocker} namespace is a valid option. If so, all methods from that class
+     * are read and matched against the qualified and validated command arguments. if a
+     * match is not found, a {@link InvalidCommandException} is thrown because there was no
+     * suitable match for the given arguments.
      * <p>
-     * <b>Rule</b>: The order of the supplied arguments do not matter. Arguments in any order is completely legal, {@code nocker}
-     * will parse and respond accordingly. What matters is that an argument contains a valid inline value.
+     * <b>Rule</b>: The order of the supplied arguments do not matter. Arguments in any order
+     * is completely legal, {@code nocker} will parse and respond accordingly. What matters is
+     * that an argument contains a valid inline value.
      *
      * <p>
      * Example: the following arguments are equivalent
@@ -151,15 +158,31 @@ public final class CommandLineInput {
         return argAndFlagHash;
     }
 
-    // check arguments are not null
-    // fully valid arguments in nocker contains '='
-    // example 'nocker scan --host=localhost --port=8080 -ax'
-    // -ax is a special argument with enhancements on the
-    // fully qualified commandLine input
+    /**
+     * Parses a command-line argument token and maps it to its corresponding value in
+     * the provided token hashmap.  If the token is not properly formatted or invalid,
+     * an exception is thrown.
+     *
+     * <p>
+     * <b>Rules</b>: arguments must contain two forward dashes, and a key value pair,
+     * an '=' sign is inline and separates the key/value.
+     * <pre>
+     * {@code
+     * --host=127.0.0.1
+     * }
+     * </pre>
+     *
+     * @param token the command-line argument token to be parsed.
+     * @param tokenHash a map where the parsed key-value pair from the token will be
+     *                  stored. The key is derived from the argument name, and the
+     *                  value corresponds to the parsed value from the token.
+     * @throws InvalidCommandException if the token does not include a valid argument
+     * format or cannot be resolved.
+     */
     private static void getParsedArgument(String token, LinkedHashMap<String, String> tokenHash) {
         if (containsEquals(token)) {
-            String currentTokenArgument = token.split("=")[0];
-            String currentTokenValue = token.split("=")[1];
+            String currentTokenArgument = token.split(ARG_SEPARATOR, 2)[0];
+            String currentTokenValue = token.split(ARG_SEPARATOR, 2)[1];
             ArgumentValue arg = fromArgToken(token, currentTokenValue);
             if (arg != null) {
                 tokenHash.put(arg.getArgument().getArgumentName(), arg.getValue());
@@ -172,15 +195,34 @@ public final class CommandLineInput {
         }
     }
 
-     // works, but can be optimized by skipping the next token if
-     // the previous token was an abbreviation ex: -t 5000
+    /**
+     * Parses a command-line flag token, determines if it is valid, and maps it to its
+     * corresponding value in the provided token hash. If the flag format is invalid,
+     * an exception is thrown.
+     * <p>
+     * <pre>
+     * {@code
+     * legal: -o myFiles/results.json -> next token, the file for storage, is consumed
+     * legal: -out=myFiles/results.json -> next token is not consumed
+     * }
+     * </pre>
+     *
+     * @param token the flag token to be processed
+     * @param nextToken the next token in the sequence, used as the value if the current
+     *                 token does not include an inline value
+     * @param tokenHash a map where the parsed flag name and its associated value will be
+     *                  stored. The key is the flag's full name, and the value is the parsed
+     *                  value.
+     * @return true if the next token was consumed as the flag's value, false otherwise
+     * @throws InvalidCommandException if the flag token is invalid or cannot be resolved
+     */
      private static boolean getParsedFlag(String token, String nextToken, LinkedHashMap<String, String> tokenHash) {
-        String tokenValue = containsEquals(token) ? token.split("=", 2)[1] : nextToken;
+        String tokenValue = containsEquals(token) ? token.split(ARG_SEPARATOR, 2)[1] : nextToken;
         FlagValue flag = fromFlagToken(token, tokenValue);
         if (flag != null) {
             // a flag's fullname is its final state
             tokenHash.put(flag.getFlag().getFullName(), flag.getValue());
-            return !containsEquals(token); // was consumed?
+            return !containsEquals(token);
         }
         throw new InvalidCommandException("Illegal flag: " + token);
     }
@@ -211,25 +253,61 @@ public final class CommandLineInput {
         return arg.map(value -> new ArgumentValue(value, tokenValue)).orElse(null);
     }
 
+    /**
+     * Normalizes a command-line flag token by removing preceding decorations, and
+     * stripping optional argument separators if present. Validates that the token
+     * starts with a single dash (-) and contains valid characters.
+     * <p>
+     * <p>
+     * <pre>
+     * {@code
+     * legal: -timeout=100 -> timeout
+     * legal: -t 100 -> t
+     * legal: -t=100 -> t
+     *
+     * illegal: t=100
+     * illegal: timeout 100
+     * }
+     * </pre>
+     * @param token the raw flag token to be normalized
+     * @return the normalized flag token
+     * @throws InvalidCommandException if the token is not legal flag format
+     */
     private static String normalizeFlagToken(String token) {
         token = token.trim();
-        if (isValidFlagStart(token)) {
-            token = token.substring(1);
-            token = containsEquals(token) ? token.split("=")[0] : token;
-            return token.trim();
+        if (!isValidFlagStart(token)) {
+            throw new InvalidCommandException("Illegal flag: " + token);
         }
-        return null;
+        token = token.substring(1);
+        token = containsEquals(token) ? token.split(ARG_SEPARATOR, 2)[0] : token;
+        return token.trim();
     }
 
-    // normalized arg token strip the prepended decorations (--, =)
-    // nocker scan --host=localhost --port=8080
+    /**
+     * Normalizes a command-line argument token by removing any prepended decorations
+     * such as double dashes (--) and an argument separator (=). It processes tokens
+     * that start with a valid argument format:
+     * <p>
+     * <pre>
+     * {@code
+     * legal: --hosts=127.0.0.1 -> hosts
+     *
+     * illegal: hosts=127.0.0.1
+     * illegal: --hosts 127.0.0.1
+     * }
+     * </pre>
+     *
+     * @param token the raw argument token to be normalized.
+     * @return the normalized argument key extracted from the token
+     * @throws InvalidCommandException if the token is not a valid argument format
+     */
     private static String normalizeArgToken(String token) {
         token = token.trim();
-        if (isValidArgStart(token)) {
-            String fullyQualifiedArgument = token.substring(2);
-            return fullyQualifiedArgument.split("=")[0];
+        if (!isValidArgStart(token)) {
+            throw new InvalidCommandException("Illegal argument: " + token);
         }
-        return null;
+        String fullyQualifiedArgument = token.substring(2);
+        return fullyQualifiedArgument.split(ARG_SEPARATOR, 2)[0];
     }
 
     public static boolean isValidFlagStart(String token) {
@@ -241,20 +319,21 @@ public final class CommandLineInput {
                 && isValidLetterCharacter(token.charAt(2))
                 && containsEquals(token);
     }
+
     public static boolean isValidLetterCharacter(char c) {
         return Character.isLetter(c);
     }
 
     public static boolean containsEquals(String token)  {
-        return token.contains("=");
+        return token.contains(ARG_SEPARATOR);
     }
 
     public static boolean startsWithSingleDash(String token) {
-        return token.startsWith("-");
+        return token.startsWith(SINGLE_DASH);
     }
 
     public static boolean startsWithDoubleDash(String token) {
-        return token.startsWith("--");
+        return token.startsWith(DOUBLE_DASH);
     }
 
     private static final class ParsedInput {
