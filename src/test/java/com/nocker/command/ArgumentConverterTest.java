@@ -71,6 +71,7 @@ class ArgumentConverterTest {
     }
 
     @Test
-    void getArgumentNamesAndTypes() {
+    void getArgumentNamesAndTypesReturns() {
+        LinkedHashMap<String, String> arguments = new LinkedHashMap<>();
     }
 }

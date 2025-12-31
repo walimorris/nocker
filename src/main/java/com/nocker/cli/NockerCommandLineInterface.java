@@ -23,7 +23,7 @@ public final class NockerCommandLineInterface {
 
     public static int run(String[] args) {
         if (OperatingSystemUtils.isMacOs()) {
-            CommandLineInput commandLineInput = new CommandLineInput(args);
+            CommandLineInput commandLineInput = CommandLineInput.parse(args);
             InvocationCommand invocationCommand = CommandEngine.retrieve(commandLineInput);
             String outPath = invocationCommand.getCommandLineInput()
                     .getFlags()

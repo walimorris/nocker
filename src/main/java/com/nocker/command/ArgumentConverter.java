@@ -38,7 +38,7 @@ final class ArgumentConverter {
      *         into the type specified in the parameters map
      * @throws IllegalArgumentException if the keys of the parameters map and the arguments map do not match
      */
-    public static Object[] convertToObjectArray(Map<String, Class> parameters, Map<String, String> args) {
+    public static Object[] convertToObjectArray(LinkedHashMap<String, Class> parameters, LinkedHashMap<String, String> args) {
         if (!hasIdenticalStringKeys(parameters, args)) {
             LOGGER.error("Keys mismatch: parameter keys {} do not match argument keys {}", parameters, args);
             throw new IllegalArgumentException("Keys mismatch: parameter keys " +
@@ -82,7 +82,7 @@ final class ArgumentConverter {
      * @return a {@code LinkedHashMap} where the keys are the argument names and the values are the corresponding {@code Class} objects
      *         derived from the key's value
      */
-    public static LinkedHashMap<String, Class> getArgumentNamesAndTypes(Map<String, String> arguments) {
+    public static LinkedHashMap<String, Class> getArgumentNamesAndTypes(LinkedHashMap<String, String> arguments) {
         LinkedHashMap<String, Class> result = new LinkedHashMap<>();
         for (Map.Entry<String, String> entry : arguments.entrySet()) {
             result.put(entry.getKey(), convert(entry.getValue()));
@@ -126,7 +126,7 @@ final class ArgumentConverter {
         if (type == PortWildcard.class) {
             return new PortWildcard(value);
         }
-        LOGGER.error("Unsupported system type: {}", type);
+        LOGGER.error("Unsupported argument type: {}", type);
         throw new IllegalArgumentException("must be one of valid types: " + Arrays.toString(validTypes));
     }
 

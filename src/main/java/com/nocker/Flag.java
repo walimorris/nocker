@@ -2,13 +2,14 @@ package com.nocker;
 
 import java.util.EnumSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public enum Flag {
-    TIMEOUT("timeout", "-t"),
-    CONCURRENCY("concurrency", "-c"),
-    SYN("sneak", "-s"),
-    FORMAT("format", "-f"),
-    OUT("out", "-o");
+    TIMEOUT("timeout", "t"),
+    CONCURRENCY("concurrency", "c"),
+    SYN("sneak", "s"),
+    FORMAT("format", "f"),
+    OUT("out", "o");
 
     private final String full;
     private final String abbr;
@@ -28,5 +29,11 @@ public enum Flag {
 
     public static Set<Flag> flagValues() {
         return EnumSet.allOf(Flag.class);
+    }
+
+    public static Set<String> flagStringValues() {
+        return flagValues().stream()
+                .map(Flag::getFullName)
+                .collect(Collectors.toSet());
     }
 }

@@ -1,5 +1,6 @@
 package com.nocker.command;
 
+import com.nocker.portscanner.PortScanner;
 import com.nocker.portscanner.command.CommandLineInput;
 import com.nocker.portscanner.command.InvocationCommand;
 import org.slf4j.Logger;
@@ -27,8 +28,8 @@ public final class CommandEngine {
         String command = commandLineInput.getCommand();
         LinkedHashMap<String, String> arguments = commandLineInput.getArguments();
 
-        // filter 1: filter methods with command
-        List<Method> methodsFromCommand = MethodResolver.filterMethodsFromCommand(command);
+        // filter 1: filter methods with command - will need to update this and pull class from command invocation
+        List<Method> methodsFromCommand = MethodResolver.filterMethodsFromCommand(command, PortScanner.class);
         // filter 2: filter from param count
         List<Method> methodsFromParamCount = MethodResolver.filterMethodsByParameterCount(methodsFromCommand, arguments.size());
         // filter 3: filter by exact param
@@ -36,9 +37,9 @@ public final class CommandEngine {
     }
 
     private static InvocationCommand retrieveInvocationCommandFromMethodExtraction(CommandLineInput commandLineInput, List<Method> methods,
-                                                               Map<String, String> arguments) {
+                                                               LinkedHashMap<String, String> arguments) {
         Method winningMethod = null;
-        Map<String, Class> parameters = null;
+        LinkedHashMap<String, Class> parameters = null;
         LinkedHashMap<String, Class> args = ArgumentConverter.getArgumentNamesAndTypes(arguments);
         for (Method method : methods) {
             LinkedHashMap<String, Class> currentParameters = MethodResolver.getParameterNamesAndTypes(method);
@@ -49,7 +50,7 @@ public final class CommandEngine {
             }
         }
         if (winningMethod == null) {
-            return null;
+            return null; // should throw here or output some useful info
         }
         Object[] commandArgs = ArgumentConverter.convertToObjectArray(parameters, arguments);
         return new InvocationCommand(commandLineInput, winningMethod, commandArgs);

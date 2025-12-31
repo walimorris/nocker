@@ -3,6 +3,7 @@ package com.nocker.command;
 import com.nocker.annotations.CommandType;
 import com.nocker.annotations.NockerArg;
 import com.nocker.portscanner.PortScanner;
+import com.nocker.portscanner.command.InvalidCommandException;
 import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,12 +13,21 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.*;
 
-final class MethodResolver {
+public class MethodResolver {
     private static final Logger LOGGER = LoggerFactory.getLogger(MethodResolver.class);
 
     private MethodResolver() {
         throw new AssertionError("Cannot instantiate instance of final class" + getClass().getName());
     }
+
+    public static final Map<String, Class> METHOD_CLASS_HASH;
+
+    static {
+        METHOD_CLASS_HASH = new HashMap<>();
+        METHOD_CLASS_HASH.put("scan", PortScanner.class);
+        METHOD_CLASS_HASH.put("cidr-scan", PortScanner.class);
+    }
+
 
     /**
      * Retrieves the parameter names and their associated types for a given method.
@@ -67,8 +77,8 @@ final class MethodResolver {
         return parameters;
     }
 
-    public static List<Method> filterMethodsFromCommand(String command) {
-        Method[] methods = getAllCommandMethods();
+    public static List<Method> filterMethodsFromCommand(String command, Class clazz) {
+        Method[] methods = getAllCommandMethods(clazz);
         List<Method> possibleMethods = new ArrayList<>();
         for (Method method : methods) {
             Annotation[] declaredAnnotations = method.getDeclaredAnnotations();
@@ -93,9 +103,12 @@ final class MethodResolver {
         return methodResults;
     }
 
-    private static Method[] getAllCommandMethods() {
-        Class<PortScanner> commandClass = PortScanner.class;
-        return commandClass.getMethods();
+    public static boolean isLegalMethod(String method) {
+        return METHOD_CLASS_HASH.containsKey(method);
+    }
+
+    private static Method[] getAllCommandMethods(Class<?> clazz) {
+        return clazz.getMethods();
     }
 
     private static boolean containsCommandType(Annotation annotation, String commandTypeStr) {
@@ -110,5 +123,53 @@ final class MethodResolver {
             return commandType.name().equals(commandTypeStr);
         }
         return false;
+    }
+
+    public static List<Method> getAllMethodFromClass(Class<?> clazz, String name) {
+        Method[] methods = getAllCommandMethods(clazz);
+        List<Method> results = new ArrayList<>();
+        for (Method method : methods) {
+            if (method.getName().equals(normalizeMethodName(name))) {
+                results.add(method);
+            }
+        }
+        return results;
+    }
+
+    public static Class findClassFromMethodName(String methodName) {
+        methodName = normalizeMethodName(methodName);
+        return METHOD_CLASS_HASH.getOrDefault(methodName, null);
+    }
+
+    public static Set<String> getParameterNamesFromMethod(Method method) {
+        Parameter[] parameters = method.getParameters();
+        Set<String> parameterSet = new HashSet<>();
+        for (Parameter parameter : parameters) {
+            for (Annotation annotation : parameter.getAnnotations()) {
+                Class<? extends Annotation> annotationType = annotation.annotationType();
+                if (annotationType.isAnnotationPresent(NockerArg.class)) {
+                    try {
+                        String name = (String) annotationType.getMethod("name").invoke(annotation);
+                        parameterSet.add(name);
+                    } catch (Exception e) {
+                        // log something useful
+                    }
+                }
+            }
+        }
+        return parameterSet;
+    }
+
+    private static String normalizeMethodName(String commandMethod) {
+        if (commandMethod.contains("-")) {
+            String[] splitName = commandMethod.split("-");
+            if (splitName.length > 2) {
+                throw new InvalidCommandException("command method with three parts not supported.");
+            }
+            String part1 = splitName[0];
+            String part2 = splitName[1];
+            return part1 + part2.substring(0, 1).toUpperCase() + part2.substring(1);
+        }
+        return commandMethod;
     }
 }
