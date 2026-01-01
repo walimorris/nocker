@@ -12,7 +12,6 @@ import org.pcap4j.packet.TcpPacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Serializable;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +19,7 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 
 // review: duration times - because of update
-public class PortScanSynTask implements PortScanTask, Callable<List<PortScanResult>>, Serializable {
+public class PortScanSynTask implements PortScanTask, Callable<List<PortScanResult>> {
     private static final Logger LOGGER = LoggerFactory.getLogger(PortScanSynTask.class);
 
     private final Inet4Address destinationHost;
@@ -31,6 +30,8 @@ public class PortScanSynTask implements PortScanTask, Callable<List<PortScanResu
     private final UUID schedulerId;
     private final UUID taskId = UuidUtil.getTimeBasedUuid();
     // add a tll
+
+    private static final long serialVersionUID = 1L;
 
     public PortScanSynTask(UUID schedulerId, Inet4Address destinationHost, List<Integer> destinationPorts, int sourcePort,
                            int timeout) {

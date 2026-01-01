@@ -14,14 +14,16 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 // review: duration times - because of update
 public class PortScanSynAckScheduler implements PortScanScheduler {
-    private final ExecutorService executorService;
-    private final CompletionService<List<PortScanResult>> completionService;
+    private final transient ExecutorService executorService;
+    private final transient CompletionService<List<PortScanResult>> completionService;
     private final int concurrency; // adjustable
     private final UUID schedulerId = UuidUtil.getTimeBasedUuid();
 
-    private final AtomicLong startNanos = new AtomicLong(0);
-    private final AtomicLong latestStartNanos = new AtomicLong(0);
-    private final AtomicLong stopNanos = new AtomicLong(0);
+    private final transient AtomicLong startNanos = new AtomicLong(0);
+    private final transient AtomicLong latestStartNanos = new AtomicLong(0);
+    private final transient AtomicLong stopNanos = new AtomicLong(0);
+
+    private static final long serialVersionUID = 1L;
 
     public PortScanSynAckScheduler() {
         this(PortScanner.DEFAULT_CONCURRENCY);

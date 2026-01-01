@@ -1,6 +1,8 @@
 package com.nocker.portscanner.tasks;
 
-public interface PortScanTask {
+import java.io.Serializable;
+
+public interface PortScanTask extends Serializable {
 
     /**
      * Retrieves the unique identifier of the task.

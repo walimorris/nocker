@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,7 +15,7 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 
 // review: duration times - because of update
-public class PortScanSynAckTask implements PortScanTask, Callable<List<PortScanResult>>, Serializable {
+public class PortScanSynAckTask implements PortScanTask, Callable<List<PortScanResult>> {
     private static final Logger LOGGER = LoggerFactory.getLogger(PortScanSynAckTask.class);
 
     private final Inet4Address host;
@@ -25,6 +24,8 @@ public class PortScanSynAckTask implements PortScanTask, Callable<List<PortScanR
     private final int timeout;
     private final UUID schedulerId;
     private final UUID taskId = UuidUtil.getTimeBasedUuid();
+
+    private static final long serialVersionUID = 1L;
 
     public PortScanSynAckTask(UUID schedulerId, Inet4Address host, List<Integer> ports, int timeout) {
         this.schedulerId = schedulerId;
