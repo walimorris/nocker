@@ -50,10 +50,13 @@ public class MethodResolver {
      * </pre>
      * </p>
      *
-     * @param method the {@code Method} object whose parameters' names and types are to be extracted
-     * @return a {@code LinkedHashMap} where the keys are parameter names and the values are the corresponding parameter types,
-     *         preserving the declaration order of the method's parameters
-     * @throws RuntimeException if an error occurs during annotation parsing or reflection calls
+     * @param method the {@code Method} object whose parameters' names and types are to
+     *               be extracted
+     * @return a {@code LinkedHashMap} where the keys are parameter names and the values
+     *         are the corresponding parameter types, preserving the declaration order of
+     *         the method's parameters
+     * @throws RuntimeException if an error occurs during annotation parsing or reflection
+     * calls
      */
     public static LinkedHashMap<String, Class> getParameterNamesAndTypes(Method method) {
         LinkedHashMap<String, Class> parameters = new LinkedHashMap<>();
