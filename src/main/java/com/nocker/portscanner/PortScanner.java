@@ -37,6 +37,10 @@ import static com.nocker.portscanner.SourcePortAllocator.*;
 // int taskCount = 0;
 // int batchSize = getBatchSize(hostAddress);
 // List<PortRange> chunks = getChunks(sortedPorts.get(0), sortedPorts.get(sortedPorts.size() - 1), batchSize);
+// The system currently references methods by their defined name. Having multiple methods of the same name
+// limits the number of possible commands and their parameters. I suggest a Nocker @Method annotation is
+// introduced and utilized in the MethodResolver for resolving command line inputs. This introduces variability
+// in possible arguments for a given scan type (scan, cidr-scan). Further, scan types may grow or evolve.
 public class PortScanner {
     private static final Logger LOGGER = LoggerFactory.getLogger(PortScanner.class);
 

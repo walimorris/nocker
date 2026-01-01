@@ -182,9 +182,9 @@ public class MethodResolver {
     }
 
     private static String normalizeMethodName(String commandMethod) {
-        if (commandMethod.contains("-")) {
+        if (commandMethod.contains(SINGLE_DASH)) {
             String[] splitName = commandMethod.split(SINGLE_DASH, 2);
-            if (splitName.length > 2) {
+            if (splitName.length != 2) {
                 throw new InvalidCommandException("command method with three parts not supported.");
             }
             String part1 = splitName[0];
