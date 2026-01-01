@@ -13,6 +13,8 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.*;
 
+import static com.nocker.portscanner.command.CommandLineInput.SINGLE_DASH;
+
 public class MethodResolver {
     private static final Logger LOGGER = LoggerFactory.getLogger(MethodResolver.class);
 
@@ -59,17 +61,18 @@ public class MethodResolver {
      * calls
      */
     public static LinkedHashMap<String, Class> getParameterNamesAndTypes(Method method) {
-        LinkedHashMap<String, Class> parameters = new LinkedHashMap<>();
-        for (Parameter parameter : method.getParameters()) {
-            for (Annotation annotation : parameter.getAnnotations()) {
-                Class<? extends Annotation> annotationType = annotation.annotationType();
-                if (annotationType.isAnnotationPresent(NockerArg.class)) {
+        LinkedHashMap<String, Class> params = new LinkedHashMap<>();
+        for (Parameter param : method.getParameters()) {
+            for (Annotation at : param.getAnnotations()) {
+                Class<? extends Annotation> atype = at.annotationType();
+                if (atype.isAnnotationPresent(NockerArg.class)) {
                     try {
-                        String name = (String) annotationType.getMethod("name").invoke(annotation);
-                        Class<?> type = parameter.getType();
-                        parameters.put(name, type);
+                        String name = (String) atype.getMethod("name").invoke(at);
+                        Class<?> type = param.getType();
+                        params.put(name, type);
                     } catch (Exception e) {
-                        LOGGER.error("Error parsing annotation, parameter name and type from given method: [{}#{}] with parameters {}: {}",
+                        LOGGER.error("Error parsing annotation, parameter name and type" +
+                                        " from given method: [{}#{}] with parameters {}: {}",
                                 method.getClass().getName(), method.getName(),
                                 method.getParameters(), e.getStackTrace());
                         throw new RuntimeException(e);
@@ -77,7 +80,7 @@ public class MethodResolver {
                 }
             }
         }
-        return parameters;
+        return params;
     }
 
     public static List<Method> filterMethodsFromCommand(String command, Class clazz) {
@@ -115,11 +118,11 @@ public class MethodResolver {
     }
 
     private static boolean containsCommandType(Annotation annotation, String commandTypeStr) {
-        Annotation[] annotations = annotation.annotationType().getAnnotations();
+        Annotation[] ats = annotation.annotationType().getAnnotations();
         CommandType commandType = null;
-        for (Annotation a : annotations) {
-            if (a.annotationType().equals(CommandType.class)) {
-                commandType = (CommandType) a;
+        for (Annotation at : ats) {
+            if (at.annotationType().equals(CommandType.class)) {
+                commandType = (CommandType) at;
             }
         }
         if (commandType != null) {
@@ -144,15 +147,30 @@ public class MethodResolver {
         return METHOD_CLASS_HASH.getOrDefault(methodName, null);
     }
 
+    /**
+     * Extracts the parameter names of a given method based on annotations.
+     * This method scans all parameters of the provided {@code Method} object
+     * and checks if they are annotated with an annotation that is
+     * meta-annotated with {@link NockerArg}. If such an annotation is present,
+     * its "name" value is extracted and added to the resulting set of
+     * parameter names.
+     *
+     * @param method the {@code Method} object whose parameter names are
+     *               to be extracted
+     * @return a {@code Set<String>} containing the parameter names extracted
+     * from the method, as defined by the annotations
+     */
     public static Set<String> getParameterNamesFromMethod(Method method) {
         Parameter[] parameters = method.getParameters();
         Set<String> parameterSet = new HashSet<>();
         for (Parameter parameter : parameters) {
-            for (Annotation annotation : parameter.getAnnotations()) {
-                Class<? extends Annotation> annotationType = annotation.annotationType();
-                if (annotationType.isAnnotationPresent(NockerArg.class)) {
+            for (Annotation at : parameter.getAnnotations()) {
+                Class<? extends Annotation> atype = at.annotationType();
+                if (atype.isAnnotationPresent(NockerArg.class)) {
                     try {
-                        String name = (String) annotationType.getMethod("name").invoke(annotation);
+                        String name = (String) atype
+                                .getMethod("name")
+                                .invoke(at);
                         parameterSet.add(name);
                     } catch (Exception e) {
                         // log something useful
@@ -165,7 +183,7 @@ public class MethodResolver {
 
     private static String normalizeMethodName(String commandMethod) {
         if (commandMethod.contains("-")) {
-            String[] splitName = commandMethod.split("-");
+            String[] splitName = commandMethod.split(SINGLE_DASH, 2);
             if (splitName.length > 2) {
                 throw new InvalidCommandException("command method with three parts not supported.");
             }
