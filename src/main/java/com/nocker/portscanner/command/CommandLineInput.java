@@ -14,12 +14,14 @@ public final class CommandLineInput {
     private static final Logger LOGGER = LoggerFactory.getLogger(CommandLineInput.class);
 
     private final String command;
+    private final CommandMethod commandMethod;
     private final LinkedHashMap<String, String> arguments;
     private final LinkedHashMap<String, String> flags;
 
     public static final String ARG_SEPARATOR = "=";
     public static final String SINGLE_DASH = "-";
     public static final String DOUBLE_DASH = "--";
+    public static final String EMPTY_SPACE = "\\s";
 
     // move to enum
     private static final Set<String> legalMethods = new HashSet<>(Arrays.asList(
@@ -27,9 +29,10 @@ public final class CommandLineInput {
             "cidr-scan"
     ));
 
-    private CommandLineInput(String command, LinkedHashMap<String, String> args,
+    private CommandLineInput(String command, CommandMethod commandMethod, LinkedHashMap<String, String> args,
             LinkedHashMap<String, String> flags) {
         this.command = command;
+        this.commandMethod = commandMethod;
         this.arguments = args;
         this.flags = flags;
     }
@@ -38,12 +41,17 @@ public final class CommandLineInput {
         ParsedInput parsedInput = validateAndParse(args);
         return new CommandLineInput(
                 parsedInput.getCommand(),
+                parsedInput.getCommandMethod(),
                 new LinkedHashMap<>(parsedInput.getArguments()),
                 new LinkedHashMap<>(parsedInput.getFlags()));
     }
 
     public String getCommand() {
         return this.command;
+    }
+
+    public CommandMethod getCommandMethod() {
+        return this.commandMethod;
     }
 
     public LinkedHashMap<String, String> getArguments() {
@@ -70,10 +78,10 @@ public final class CommandLineInput {
         if (!MethodResolver.isLegalMethod(args[1])) {
             throw new InvalidCommandException("Illegal method. Possible options are: \n" + legalMethods);
         }
-        String command = String.join(" ", args);
+        String command = String.join(EMPTY_SPACE, args);
         Map<Class<?>, LinkedHashMap<String, String>> hash = parseArgumentsAndFlags(args);
-        validateFromMethodSignature(args, hash.get(Arg.class));
-        return new ParsedInput(command, Collections.unmodifiableMap(new LinkedHashMap<>(hash.get(Arg.class))),
+        CommandMethod commandMethod = validateFromMethodSignature(args, hash.get(Arg.class));
+        return new ParsedInput(command, commandMethod, Collections.unmodifiableMap(new LinkedHashMap<>(hash.get(Arg.class))),
                 Collections.unmodifiableMap(new LinkedHashMap<>(hash.get(Flag.class))));
     }
 
@@ -102,25 +110,30 @@ public final class CommandLineInput {
      * @param commandInputs the original supplied command
      * @param arguments parsed arguments from validation
      */
-    private static void validateFromMethodSignature(String[] commandInputs, LinkedHashMap<String, String> arguments) {
+    private static CommandMethod validateFromMethodSignature(String[] commandInputs, LinkedHashMap<String, String> arguments) {
         String commandMethodName = commandInputs[1];
-        Class<?> clazz = MethodResolver.findClassFromMethodName(commandMethodName);
+        Class<?> clazz = MethodResolver.findClassFromCommandMethodName(commandMethodName);
         if (clazz == null) {
             throw new InvalidCommandException("Illegal command method: " + commandMethodName);
         }
-        List<Method> possibleMethods = MethodResolver.getAllMethodFromClass(clazz, commandMethodName);
+        List<Method> possibleMethods = MethodResolver.filterMethodsFromCommand(commandMethodName, clazz);
         boolean matchFound = false;
         for (Method method : possibleMethods) {
-            Set<String> params = MethodResolver.getParameterNamesFromMethod(method);
+            Set<String> params = MethodResolver.getNockerParameterNamesFromMethod(method);
             Set<String> currentCommandArguments = arguments.keySet();
             if (params.equals(currentCommandArguments)) {
-                matchFound = true;
-                break;
+                return new CommandMethod(commandMethodName, method.getName(), method);
             }
         }
+        /**
+         * Be aware, Nocker annotation engine supplied default names for valid arguments. Changing
+         * the default name will change outcome. However, the annotation engine does not care about
+         * the name of the supplied parameter, it was always take the name of the NockerArg.
+         */
         if (!matchFound) {
             throw new InvalidCommandException("The supplied arguments are invalid: " + arguments.keySet());
         }
+        return null;
     }
 
     private static Map<Class<?>, LinkedHashMap<String, String>> parseArgumentsAndFlags(String[] args) {
@@ -310,46 +323,52 @@ public final class CommandLineInput {
         return fullyQualifiedArgument.split(ARG_SEPARATOR, 2)[0];
     }
 
-    public static boolean isValidFlagStart(String token) {
+    private static boolean isValidFlagStart(String token) {
         return startsWithSingleDash(token) && isValidLetterCharacter(token.charAt(1));
     }
 
-    public static boolean isValidArgStart(String token) {
+    private static boolean isValidArgStart(String token) {
         return startsWithDoubleDash(token)
                 && isValidLetterCharacter(token.charAt(2))
                 && containsEquals(token);
     }
 
-    public static boolean isValidLetterCharacter(char c) {
+    private static boolean isValidLetterCharacter(char c) {
         return Character.isLetter(c);
     }
 
-    public static boolean containsEquals(String token)  {
+    private static boolean containsEquals(String token)  {
         return token.contains(ARG_SEPARATOR);
     }
 
-    public static boolean startsWithSingleDash(String token) {
+    private static boolean startsWithSingleDash(String token) {
         return token.startsWith(SINGLE_DASH);
     }
 
-    public static boolean startsWithDoubleDash(String token) {
+    private static boolean startsWithDoubleDash(String token) {
         return token.startsWith(DOUBLE_DASH);
     }
 
     private static final class ParsedInput {
         private final String command;
+        private final CommandMethod commandMethod;
         private final Map<String, String> arguments;
         private final Map<String, String> flags;
 
-        private ParsedInput(String command, Map<String, String> arguments,
+        private ParsedInput(String command, CommandMethod commandMethod, Map<String, String> arguments,
                             Map<String, String> flags) {
             this.command = command;
+            this.commandMethod = commandMethod;
             this.arguments = arguments;
             this.flags = flags;
         }
 
         String getCommand() {
             return this.command;
+        }
+
+        CommandMethod getCommandMethod() {
+            return this.commandMethod;
         }
 
         Map<String, String> getArguments() {

@@ -89,7 +89,7 @@ public class PortScanner {
     @Scan
     public void scan(@Hosts List<String> hosts, @Port int port) {
         for (String host : hosts) {
-            scan(host, port);
+            scanSingleHostAndSinglePort(host, port);
         }
     }
 
@@ -121,7 +121,7 @@ public class PortScanner {
 
     @Scan
     // scan complete
-    public void scan(@Host String host, @Port int port) {
+    public void scanSingleHostAndSinglePort(@Host String host, @Port int port) {
         Inet4Address hostAddress = PortScannerUtil.getHostInet4Address(host);
         String hostAddressName = PortScannerUtil.getHostInet4AddressName(hostAddress.getHostAddress());
         if (ObjectUtils.isNotEmpty(hostAddress)) {

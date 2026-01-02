@@ -1,7 +1,7 @@
 package com.nocker.command;
 
-import com.nocker.annotations.CommandType;
 import com.nocker.annotations.NockerArg;
+import com.nocker.annotations.NockerMethod;
 import com.nocker.portscanner.PortScanner;
 import com.nocker.portscanner.command.InvalidCommandException;
 import org.apache.commons.collections4.CollectionUtils;
@@ -29,7 +29,6 @@ public class MethodResolver {
         METHOD_CLASS_HASH.put("scan", PortScanner.class);
         METHOD_CLASS_HASH.put("cidr-scan", PortScanner.class);
     }
-
 
     /**
      * Retrieves the parameter names and their associated types for a given method.
@@ -83,7 +82,7 @@ public class MethodResolver {
         return params;
     }
 
-    public static List<Method> filterMethodsFromCommand(String command, Class clazz) {
+    public static List<Method> filterMethodsFromCommand(String commandMethod, Class clazz) {
         Method[] methods = getAllCommandMethods(clazz);
         List<Method> possibleMethods = new ArrayList<>();
         for (Method method : methods) {
@@ -91,7 +90,7 @@ public class MethodResolver {
             if (CollectionUtils.isNotEmpty(Arrays.asList(declaredAnnotations))) {
                 // need to force single annotation on method
                 Annotation methodAnnotation = declaredAnnotations[0];
-                if (containsCommandType(methodAnnotation, command)) {
+                if (containsNockerMethod(methodAnnotation, commandMethod)) {
                     possibleMethods.add(method);
                 }
             }
@@ -117,32 +116,35 @@ public class MethodResolver {
         return clazz.getMethods();
     }
 
-    private static boolean containsCommandType(Annotation annotation, String commandTypeStr) {
+    // validates the @Method signature equals the given commandMethod. This makes it so
+    // the natural name of the method does not matter.
+    protected static boolean containsNockerMethod(Annotation annotation, String commandMethod) {
         Annotation[] ats = annotation.annotationType().getAnnotations();
-        CommandType commandType = null;
+        NockerMethod method = null;
         for (Annotation at : ats) {
-            if (at.annotationType().equals(CommandType.class)) {
-                commandType = (CommandType) at;
+            if (at.annotationType().equals(NockerMethod.class)) {
+                method = (NockerMethod) at;
             }
         }
-        if (commandType != null) {
-            return commandType.name().equals(commandTypeStr);
+        if (method != null) {
+            String methodName = method.name();
+            return methodName.equals(commandMethod);
         }
         return false;
     }
 
-    public static List<Method> getAllMethodFromClass(Class<?> clazz, String name) {
+    public static List<Method> getAllMethodFromClass(Class<?> clazz, String methodName) {
         Method[] methods = getAllCommandMethods(clazz);
         List<Method> results = new ArrayList<>();
         for (Method method : methods) {
-            if (method.getName().equals(normalizeMethodName(name))) {
+            if (method.getName().equals(normalizeMethodName(methodName))) {
                 results.add(method);
             }
         }
         return results;
     }
 
-    public static Class findClassFromMethodName(String methodName) {
+    public static Class findClassFromCommandMethodName(String methodName) {
         methodName = normalizeMethodName(methodName);
         return METHOD_CLASS_HASH.getOrDefault(methodName, null);
     }
@@ -160,7 +162,7 @@ public class MethodResolver {
      * @return a {@code Set<String>} containing the parameter names extracted
      * from the method, as defined by the annotations
      */
-    public static Set<String> getParameterNamesFromMethod(Method method) {
+    public static Set<String> getNockerParameterNamesFromMethod(Method method) {
         Parameter[] parameters = method.getParameters();
         Set<String> parameterSet = new HashSet<>();
         for (Parameter parameter : parameters) {

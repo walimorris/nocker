@@ -1,7 +1,7 @@
 package com.nocker.portscanner.annotation.commands;
 
+import com.nocker.annotations.NockerMethod;
 import com.nocker.command.CommandEngine;
-import com.nocker.annotations.CommandType;
 import com.nocker.annotations.NockerArg;
 
 import java.lang.annotation.*;
@@ -14,6 +14,6 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 @NockerArg
-@CommandType(name = "scan")
+@NockerMethod(name = "scan")
 public @interface Scan {
 }

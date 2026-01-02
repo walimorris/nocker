@@ -50,6 +50,11 @@ class CommandLineInputTest {
     }
 
     @Test
+    void getCommandMethod() {
+
+    }
+
+    @Test
     void getFlagsAbbreviation() {
         String[] args = new String[]{"nocker", "scan", "--host=localhost", "--port=8080", "-t", "100", "-o", "results.json"};
         CommandLineInput commandLineInput = CommandLineInput.parse(args);
