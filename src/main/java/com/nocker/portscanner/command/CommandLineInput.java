@@ -10,6 +10,17 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.Method;
 import java.util.*;
 
+/**
+ * The {@code CommandLineInput} class is responsible for parsing,
+ * validating, and managing command-line inputs, including
+ * commands, arguments, and flags. It provides methods for
+ * extracting and organizing information from user-provided
+ * command-line arguments. This class ensures that input
+ * follows the correct syntax and adheres to predefined
+ * rules for commands, arguments, and flags.
+ *
+ * @author Wali Morris
+ */
 public final class CommandLineInput {
     private static final Logger LOGGER = LoggerFactory.getLogger(CommandLineInput.class);
 
@@ -37,6 +48,18 @@ public final class CommandLineInput {
         this.flags = flags;
     }
 
+    /**
+     * Parses the given command-line arguments into a structured
+     * {@link CommandLineInput} object.
+     *
+     * @param args the array of command-line arguments passed to the application.
+     *             It should include the command and subsequent arguments or flags
+     *             in a valid format.
+     * @return a {@link CommandLineInput} object containing the parsed command,
+     *         its associated method, arguments, and flags.
+     * @throws InvalidCommandException if the input is null, the command is invalid,
+     * or the method or arguments do not follow expected formats.
+     */
     public static CommandLineInput parse(String[] args) {
         ParsedInput parsedInput = validateAndParse(args);
         return new CommandLineInput(
@@ -46,18 +69,44 @@ public final class CommandLineInput {
                 new LinkedHashMap<>(parsedInput.getFlags()));
     }
 
+    /**
+     * Retrieves the command string associated with this instance.
+     *
+     * @return {@link String} the command string
+     */
     public String getCommand() {
         return this.command;
     }
 
+    /**
+     * Retrieves the command method associated with this instance.
+     *
+     * @return the {@link CommandMethod} object that represents
+     * the method associated with the command in this instance.
+     */
     public CommandMethod getCommandMethod() {
         return this.commandMethod;
     }
 
+    /**
+     * Retrieves the map of arguments provided in the command-line
+     * input.
+     *
+     * @return a {@link LinkedHashMap} where the keys represent
+     * argument names and the values represent the corresponding
+     * argument values parsed from the input.
+     */
     public LinkedHashMap<String, String> getArguments() {
         return this.arguments;
     }
 
+    /**
+     * Retrieves the map of flags provided in the command-line input.
+     *
+     * @return a {@link LinkedHashMap} where the keys represent flag
+     * names and the values represent the corresponding flag values
+     * parsed from the input.
+     */
     public LinkedHashMap<String, String> getFlags() {
         return this.flags;
     }
@@ -67,6 +116,20 @@ public final class CommandLineInput {
         return null;
     }
 
+    /**
+     * Validates and parses the given command-line input array into a
+     * structured {@link ParsedInput} object. Ensures the input
+     * adheres to the expected format, verifies the command execution's
+     * legality, and resolves the associated method and arguments.
+     *
+     * @param args the command-line arguments passed to the application.
+     *             It should include the command and subsequent
+     *             arguments/flags in a valid format.
+     * @return a {@link ParsedInput} object that contains the parsed command,
+     * method, arguments, and flags.
+     * @throws InvalidCommandException if the input is null, the command is
+     * invalid, or the method is illegal.
+     */
     private static ParsedInput validateAndParse(String[] args) {
         // a minimal command: nocker scan --host=localhost
         if (args == null) {
@@ -125,11 +188,6 @@ public final class CommandLineInput {
                 return new CommandMethod(commandMethodName, method.getName(), method);
             }
         }
-        /**
-         * Be aware, Nocker annotation engine supplied default names for valid arguments. Changing
-         * the default name will change outcome. However, the annotation engine does not care about
-         * the name of the supplied parameter, it was always take the name of the NockerArg.
-         */
         if (!matchFound) {
             throw new InvalidCommandException("The supplied arguments are invalid: " + arguments.keySet());
         }
