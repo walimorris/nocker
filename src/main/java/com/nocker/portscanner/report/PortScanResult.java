@@ -1,4 +1,6 @@
-package com.nocker.portscanner;
+package com.nocker.portscanner.report;
+
+import com.nocker.portscanner.PortState;
 
 import java.net.Inet4Address;
 import java.util.UUID;

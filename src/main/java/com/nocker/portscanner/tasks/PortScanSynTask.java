@@ -1,6 +1,6 @@
 package com.nocker.portscanner.tasks;
 
-import com.nocker.portscanner.PortScanResult;
+import com.nocker.portscanner.report.PortScanResult;
 import com.nocker.portscanner.PortScannerUtil;
 import com.nocker.portscanner.PortState;
 import com.nocker.portscanner.packet.Ipv4TcpSynPacket;

@@ -1,7 +1,9 @@
 package com.nocker.portscanner.scheduler;
 
-import com.nocker.portscanner.PortScanResult;
+import com.nocker.portscanner.report.PortScanReport;
+import com.nocker.portscanner.report.PortScanResult;
 import com.nocker.portscanner.PortScanner;
+import com.nocker.portscanner.report.ScanSummary;
 import org.apache.logging.log4j.core.util.UuidUtil;
 
 import java.util.*;
@@ -43,15 +45,19 @@ public class PortScanSynAckScheduler implements PortScanScheduler {
     }
 
     @Override
-    public List<PortScanResult> shutdownAndCollect(AtomicInteger taskCount) {
+    public PortScanReport shutdownAndCollect(AtomicInteger taskCount) {
         List<PortScanResult> results = new ArrayList<>();
+        ScanSummary scanSummary = new ScanSummary(startNanos.get());
         try {
             int i = 0;
             while (i < taskCount.get()) {
                 Future<List<PortScanResult>> future = completionService.take();
                 List<PortScanResult> tasksResults = future.get();
                 if (tasksResults != null) {
-                    results.addAll(tasksResults);
+                    for (PortScanResult result : tasksResults) {
+                        scanSummary.update(result);
+                        results.add(result);
+                    }
                 }
                 i++;
             }
@@ -62,8 +68,10 @@ public class PortScanSynAckScheduler implements PortScanScheduler {
         } finally {
             executorService.shutdown();
         }
+        // can remove once summary is integrated into scanner
         stopNanos.set(System.nanoTime());
-        return results;
+        scanSummary.stop();
+        return new PortScanReport(results, scanSummary);
     }
 
     @Override

@@ -1,6 +1,6 @@
 package com.nocker.portscanner.tasks;
 
-import com.nocker.portscanner.PortScanResult;
+import com.nocker.portscanner.report.PortScanResult;
 import com.nocker.portscanner.PortScannerUtil;
 import com.nocker.portscanner.PortState;
 import org.apache.logging.log4j.core.util.UuidUtil;

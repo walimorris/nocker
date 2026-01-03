@@ -10,6 +10,8 @@ import com.nocker.portscanner.annotation.commands.CIDRScan;
 import com.nocker.portscanner.annotation.commands.Scan;
 import com.nocker.portscanner.model.HostIdentity;
 import com.nocker.portscanner.model.HostModel;
+import com.nocker.portscanner.report.PortScanReport;
+import com.nocker.portscanner.report.PortScanResult;
 import com.nocker.portscanner.scheduler.PortScanScheduler;
 import com.nocker.portscanner.scheduler.PortScanSynAckScheduler;
 import com.nocker.portscanner.tasks.PortRange;
@@ -37,10 +39,6 @@ import static com.nocker.portscanner.SourcePortAllocator.*;
 // int taskCount = 0;
 // int batchSize = getBatchSize(hostAddress);
 // List<PortRange> chunks = getChunks(sortedPorts.get(0), sortedPorts.get(sortedPorts.size() - 1), batchSize);
-// The system currently references methods by their defined name. Having multiple methods of the same name
-// limits the number of possible commands and their parameters. I suggest a Nocker @Method annotation is
-// introduced and utilized in the MethodResolver for resolving command line inputs. This introduces variability
-// in possible arguments for a given scan type (scan, cidr-scan). Further, scan types may grow or evolve.
 public class PortScanner {
     private static final Logger LOGGER = LoggerFactory.getLogger(PortScanner.class);
 
@@ -114,8 +112,8 @@ public class PortScanner {
             List<PortRange> chunks = getChunks(MIN_PORT, MAX_PORT, batchSize);
             PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
             fireInTheHole(scanScheduler, hostAddress, chunks, taskCount);
-            List<PortScanResult> results = scanScheduler.shutdownAndCollect(taskCount);
-            triggerResponse(scanScheduler, results, hostAddress.getHostAddress(), hostAddressName);
+            PortScanReport report = scanScheduler.shutdownAndCollect(taskCount);
+            triggerResponse(scanScheduler, report.getResults(), hostAddress.getHostAddress(), hostAddressName);
         }
     }
 
@@ -153,8 +151,8 @@ public class PortScanner {
                 List<PortRange> chunks = getChunks(sortedPorts.get(0), sortedPorts.get(sortedPorts.size() - 1), batchSize);
                 PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
                 fireInTheHole(scanScheduler, hostAddress, chunks, taskCount);
-                List<PortScanResult> results = scanScheduler.shutdownAndCollect(taskCount);
-                triggerResponse(scanScheduler, results, hostAddress.getHostAddress(), hostAddressName);
+                PortScanReport report = scanScheduler.shutdownAndCollect(taskCount);
+                triggerResponse(scanScheduler, report.getResults(), hostAddress.getHostAddress(), hostAddressName);
             }
         }
     }
@@ -170,8 +168,8 @@ public class PortScanner {
             List<PortRange> chunks = getChunks(ports.getLowPort(), ports.getHighPort(), batchSize);
             PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency);
             fireInTheHole(scanScheduler, inet4Address, chunks, taskCount);
-            List<PortScanResult> results = scanScheduler.shutdownAndCollect(taskCount);
-            triggerResponse(scanScheduler, results, inet4Address.getHostAddress(), hostAddressName);
+            PortScanReport report = scanScheduler.shutdownAndCollect(taskCount);
+            triggerResponse(scanScheduler, report.getResults(), inet4Address.getHostAddress(), hostAddressName);
         } else {
             PortScannerUtil.logInvalidHost(host);
         }
@@ -203,8 +201,8 @@ public class PortScanner {
                 }
                 hosts.incrementLastOctet();
             }
-            List<PortScanResult> results = scanScheduler.shutdownAndCollect(taskCount);
-            List<HostModel> hostModels = collectHostModels(scanScheduler, results);
+            PortScanReport report = scanScheduler.shutdownAndCollect(taskCount);
+            List<HostModel> hostModels = collectHostModels(scanScheduler, report.getResults());
             triggerResponse(hostModels);
         }
     }

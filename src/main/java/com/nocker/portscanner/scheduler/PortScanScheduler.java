@@ -1,6 +1,7 @@
 package com.nocker.portscanner.scheduler;
 
-import com.nocker.portscanner.PortScanResult;
+import com.nocker.portscanner.report.PortScanReport;
+import com.nocker.portscanner.report.PortScanResult;
 
 import java.io.Serializable;
 import java.util.List;
@@ -21,13 +22,17 @@ public interface PortScanScheduler extends Serializable {
     void submit(Callable<List<PortScanResult>> task);
 
     /**
-     * Terminates the scheduler, blocks until all submitted tasks are completed, and collects their results.
+     * Shuts down the scheduler, waits for the completion of all submitted tasks, gathers their results,
+     * and compiles a comprehensive port scan report.
      *
-     * @param taskCount the total number of tasks to wait for and collect results from.
-     *                  This value should reflect the number of tasks submitted to the scheduler.
-     * @return a list of {@link PortScanResult} objects containing the outcomes of the completed port scanning tasks.
+     * @param taskCount the atomic counter representing the total number of tasks submitted to the scheduler.
+     *                  This value is used to determine how many tasks the method needs to wait for
+     *                  before shutting down the scheduler and collecting results.
+     *
+     * @return a {@code PortScanReport} instance that contains the results of all completed port scan tasks
+     *         and a summary of the scan, including any aggregated data and statistical information.
      */
-    List<PortScanResult> shutdownAndCollect(AtomicInteger taskCount);
+    PortScanReport shutdownAndCollect(AtomicInteger taskCount);
 
     /**
      * Retrieves the duration of time in milliseconds that elapsed between the start
