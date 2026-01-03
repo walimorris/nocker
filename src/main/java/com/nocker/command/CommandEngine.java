@@ -24,7 +24,7 @@ public final class CommandEngine {
             return null; // should throw here or output some useful info
         }
         LinkedHashMap<String, Class> currentParameters = MethodResolver
-                .getParameterNamesAndTypes(cl.getCommandMethod().getMethod());
+                .getNockerParameterNamesAndTypes(cl.getCommandMethod().getMethod());
 
         Object[] commandArgs = ArgumentConverter.convertToObjectArray(currentParameters, cl.getArguments());
         return new InvocationCommand(cl, cl.getCommandMethod().getMethod(), commandArgs);

@@ -68,7 +68,7 @@ public class MethodResolver {
      * @throws RuntimeException if an error occurs during annotation parsing or reflection
      * calls
      */
-    public static LinkedHashMap<String, Class> getParameterNamesAndTypes(Method method) {
+    public static LinkedHashMap<String, Class> getNockerParameterNamesAndTypes(Method method) {
         LinkedHashMap<String, Class> params = new LinkedHashMap<>();
         for (Parameter param : method.getParameters()) {
             for (Annotation at : param.getAnnotations()) {
@@ -212,8 +212,12 @@ public class MethodResolver {
         Method[] methods = getAllCommandMethods(clazz);
         List<Method> results = new ArrayList<>();
         for (Method method : methods) {
-            if (method.getName().equals(normalizeMethodName(methodName))) {
-                results.add(method);
+            try {
+                if (method.getName().equals(normalizeClassMethodName(methodName))) {
+                    results.add(method);
+                }
+            } catch (InvalidCommandException e) {
+                throw new InvalidCommandException(e.getMessage());
             }
         }
         return results;
@@ -230,7 +234,11 @@ public class MethodResolver {
      * if found; otherwise returns {@code null}.
      */
     public static Class findClassFromCommandMethodName(String methodName) {
-        methodName = normalizeMethodName(methodName);
+        try {
+            methodName = normalizeClassMethodName(methodName);
+        } catch (InvalidCommandException e) {
+            throw new InvalidCommandException(e.getMessage());
+        }
         return METHOD_CLASS_HASH.getOrDefault(methodName, null);
     }
 
@@ -275,6 +283,9 @@ public class MethodResolver {
      * capitalized and concatenated with the portion before the dash. If the
      * method name is incorrectly formatted with multiple dashes, an
      * InvalidCommandException is thrown.
+     * <p>
+     * Note: Applies to class methods only. Does not apply to commandMethods
+     * supplied as input.
      *
      * @param commandMethod the original method name to be normalized, which may
      *                      include a single dash as a separator
@@ -282,11 +293,11 @@ public class MethodResolver {
      * @throws InvalidCommandException if the input contains an invalid format with
      * multiple dashes
      */
-    private static String normalizeMethodName(String commandMethod) {
+    private static String normalizeClassMethodName(String commandMethod) throws InvalidCommandException {
         if (commandMethod.contains(SINGLE_DASH)) {
-            String[] splitName = commandMethod.split(SINGLE_DASH, 2);
+            String[] splitName = commandMethod.split(SINGLE_DASH);
             if (splitName.length != 2) {
-                throw new InvalidCommandException("command method with three parts not supported.");
+                throw new InvalidCommandException("Invalid multipart command method: [" + commandMethod + "]");
             }
             String part1 = splitName[0];
             String part2 = splitName[1];
