@@ -26,6 +26,9 @@ public final class NockerCommandLineInterface {
 
     public static int run(String[] args) {
         if (OperatingSystemUtils.isMacOs()) {
+            // TODO: add a step here to clean up lexical normalization (mainly extra spaces).
+            // TODO: Sort of missed the boat on other lexical normalizations such as flag formats
+            // but that can be refactored from (.parse()) at a later time.
             CommandLineInput commandLineInput = CommandLineInput.parse(args);
             InvocationCommand invocationCommand = CommandEngine.retrieve(commandLineInput);
             String outPath = invocationCommand.getCommandLineInput()

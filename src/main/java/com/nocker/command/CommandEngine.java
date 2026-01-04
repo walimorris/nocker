@@ -16,10 +16,6 @@ public final class CommandEngine {
 
     // retrieve the method
     public static InvocationCommand retrieve(CommandLineInput cl) {
-        return retrieveInvocationCommandFromMethodExtraction(cl);
-    }
-
-    private static InvocationCommand retrieveInvocationCommandFromMethodExtraction(CommandLineInput cl) {
         if (cl.getCommand() == null) {
             return null; // should throw here or output some useful info
         }
