@@ -32,14 +32,6 @@ import java.util.stream.Collectors;
 
 import static com.nocker.portscanner.SourcePortAllocator.*;
 
-// review: look below at the two lines, it's used in multiple places, and will likely be used again
-// this is indication that something like a record should be created that exposes those two values.
-// Inet4Address hostAddress = PortScannerUtil.getHostInet4Address(host);
-// String hostAddressName = PortScannerUtil.getHostInet4AddressName(hostAddress.getHostAddress());
-// same goes for below lines:
-// int taskCount = 0;
-// int batchSize = getBatchSize(hostAddress);
-// List<PortRange> chunks = getChunks(sortedPorts.get(0), sortedPorts.get(sortedPorts.size() - 1), batchSize);
 // TODO: normalize arg inputs (ex: extra space in command will throw)
 // TODO: formalize triggerResponse() with Reports instead of "loose-lists" etc
 public class PortScanner {
@@ -109,28 +101,26 @@ public class PortScanner {
     // scan complete
     @Scan
     public void scan(@Host String host) {
-        Inet4Address hostAddress = PortScannerUtil.getHostInet4Address(host);
-        String hostAddressName = PortScannerUtil.getHostInet4AddressName(hostAddress.getHostAddress());
-        if (ObjectUtils.isNotEmpty(hostAddress)) {
+        HostIdentity hostIdentity = getHostIdentity(host);
+        if (ObjectUtils.isNotEmpty(hostIdentity.getHostInet4Address())) {
             AtomicInteger taskCount = new AtomicInteger(0);
-            int batchSize = getBatchSize(hostAddress);
-            System.out.println(batchSize);
+            int batchSize = getBatchSize(hostIdentity.getHostInet4Address());
             List<PortRange> chunks = getChunks(MIN_PORT, MAX_PORT, batchSize);
             PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency, invocationCommand);
-            fireInTheHole(scanScheduler, hostAddress, chunks, taskCount);
+            fireInTheHole(scanScheduler, hostIdentity.getHostInet4Address(), chunks, taskCount);
             PortScanReport report = scanScheduler.shutdownAndCollect(taskCount);
-            triggerResponse(report, hostAddress.getHostAddress(), hostAddressName);
+            triggerResponse(report, hostIdentity);
         }
     }
 
     @Scan
     // scan complete
     public void scanSingleHostAndSinglePort(@Host String host, @Port int port) {
-        Inet4Address hostAddress = PortScannerUtil.getHostInet4Address(host);
-        String hostAddressName = PortScannerUtil.getHostInet4AddressName(hostAddress.getHostAddress());
-        if (ObjectUtils.isNotEmpty(hostAddress)) {
-            List<PortScanResult> result = submitTask(hostAddress, Collections.singletonList(port));
-            triggerResponse(result, host, hostAddressName);
+        HostIdentity hostIdentity = getHostIdentity(host);
+        if (ObjectUtils.isNotEmpty(hostIdentity.getHostInet4Address())) {
+            List<PortScanResult> result = submitTask(hostIdentity.getHostInet4Address(),
+                    Collections.singletonList(port));
+            triggerResponse(result, hostIdentity);
         } else {
             PortScannerUtil.logInvalidHost(host);
         }
@@ -142,23 +132,22 @@ public class PortScanner {
     // scan logic complete
     @Scan
     public void scan(@Host String host, @Ports List<String> ports) {
-        Inet4Address hostAddress = PortScannerUtil.getHostInet4Address(host);
-        String hostAddressName = PortScannerUtil.getHostInet4AddressName(host);
+        HostIdentity hostIdentity = getHostIdentity(host);
         List<Integer> validPorts = PortScannerUtil.convertListOfPortStringsToIntegers(ports);
-        if (ObjectUtils.isNotEmpty(hostAddress) && ObjectUtils.isNotEmpty(validPorts)) {
+        if (ObjectUtils.isNotEmpty(hostIdentity.getHostInet4Address()) && ObjectUtils.isNotEmpty(validPorts)) {
             // local scans of ports less than MIN PORTS CURRENCY USAGE
-            if (PortScannerUtil.isLocalHost(hostAddressName) && ports.size() < MIN_PORTS_CONCURRENCY_USAGE) {
-                List<PortScanResult> results = submitTask(hostAddress, validPorts);
-                triggerResponse(results, hostAddress.getHostAddress(), hostAddressName);
+            if (PortScannerUtil.isLocalHost(hostIdentity.getHostname()) && ports.size() < MIN_PORTS_CONCURRENCY_USAGE) {
+                List<PortScanResult> results = submitTask(hostIdentity.getHostInet4Address(), validPorts);
+                triggerResponse(results, hostIdentity);
             } else {
                 AtomicInteger taskCount = new AtomicInteger(0);
-                int batchSize = getBatchSize(hostAddress);
+                int batchSize = getBatchSize(hostIdentity.getHostInet4Address());
                 List<Integer> sortedPorts = PortScannerUtil.sortStringListPortsToIntegerList(ports);
                 List<PortRange> chunks = getChunks(sortedPorts.get(0), sortedPorts.get(sortedPorts.size() - 1), batchSize);
                 PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency, invocationCommand);
-                fireInTheHole(scanScheduler, hostAddress, chunks, taskCount);
+                fireInTheHole(scanScheduler, hostIdentity.getHostInet4Address(), chunks, taskCount);
                 PortScanReport report = scanScheduler.shutdownAndCollect(taskCount);
-                triggerResponse(report, hostAddress.getHostAddress(), hostAddressName);
+                triggerResponse(report, hostIdentity);
             }
         }
     }
@@ -166,16 +155,15 @@ public class PortScanner {
     // scan logic complete
     @Scan
     public void scan(@Host String host, @Ports PortWildcard ports) {
-        Inet4Address inet4Address = PortScannerUtil.getHostInet4Address(host);
-        String hostAddressName = PortScannerUtil.getHostInet4AddressName(host);
-        if (ObjectUtils.isNotEmpty(inet4Address)) {
-            int batchSize = getBatchSize(inet4Address);
+        HostIdentity hostIdentity = getHostIdentity(host);
+        if (ObjectUtils.isNotEmpty(hostIdentity.getHostInet4Address())) {
+            int batchSize = getBatchSize(hostIdentity.getHostInet4Address());
             AtomicInteger taskCount = new AtomicInteger(0);
             List<PortRange> chunks = getChunks(ports.getLowPort(), ports.getHighPort(), batchSize);
             PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency, invocationCommand);
-            fireInTheHole(scanScheduler, inet4Address, chunks, taskCount);
+            fireInTheHole(scanScheduler, hostIdentity.getHostInet4Address(), chunks, taskCount);
             PortScanReport report = scanScheduler.shutdownAndCollect(taskCount);
-            triggerResponse(report, inet4Address.getHostAddress(), hostAddressName);
+            triggerResponse(report, hostIdentity);
         } else {
             PortScannerUtil.logInvalidHost(host);
         }
@@ -287,9 +275,9 @@ public class PortScanner {
         List<HostModel> hostModels = new ArrayList<>();
         for (Map.Entry<Inet4Address, List<PortScanResult>> entry : byHost.entrySet()) {
             Inet4Address host = entry.getKey();
-            String hostname = PortScannerUtil.getHostInet4AddressName(host.getHostAddress());
+            HostIdentity hostIdentity = getHostIdentity(host.getHostAddress());
             hostModels.add(responseWithHostModel(scanScheduler, entry.getValue(),
-                    host.getHostAddress(), hostname));
+                    hostIdentity));
         }
         return hostModels;
     }
@@ -298,25 +286,21 @@ public class PortScanner {
         doShowOutput(batchHostResults);
     }
 
-    private void triggerResponse(PortScanReport report, String hostAddress, String hostAddressName) {
+    private void triggerResponse(PortScanReport report, HostIdentity hostIdentity) {
         if (robust) {
-            HostModel hostModel = responseWithHostModel(report.getPortScanScheduler(), report.getResults(), hostAddress, hostAddressName);
+            HostModel hostModel = responseWithHostModel(report.getPortScanScheduler(), report.getResults(), hostIdentity);
             doShowOutput(hostModel);
         } else {
             doShowOutput(report.getSummary());
         }
     }
 
-    private void triggerResponse(List<PortScanResult> results, String hostAddress, String hostAddressName) {
-        HostModel hostModel = responseWithHostModel(results, hostAddress, hostAddressName);
+    private void triggerResponse(List<PortScanResult> results, HostIdentity hostIdentity) {
+        HostModel hostModel = responseWithHostModel(results, hostIdentity);
         doShowOutput(hostModel);
     }
 
-    private HostModel responseWithHostModel(PortScanScheduler scanScheduler, List<PortScanResult> results, String hostAddress, String hostAddressName) {
-        HostIdentity hostIdentity = new HostIdentity.Builder()
-                .hostAddress(hostAddress)
-                .hostname(hostAddressName)
-                .build();
+    private HostModel responseWithHostModel(PortScanScheduler scanScheduler, List<PortScanResult> results, HostIdentity hostIdentity) {
         return new HostModel.Builder()
                 .schedulerId(scanScheduler.getSchedulerId())
                 .hostIdentity(hostIdentity)
@@ -325,11 +309,7 @@ public class PortScanner {
                 .build();
     }
 
-    private HostModel responseWithHostModel(List<PortScanResult> results, String hostAddress, String hostAddressName) {
-        HostIdentity hostIdentity = new HostIdentity.Builder()
-                .hostAddress(hostAddress)
-                .hostname(hostAddressName)
-                .build();
+    private HostModel responseWithHostModel(List<PortScanResult> results, HostIdentity hostIdentity) {
         return new HostModel.Builder()
                 .schedulerId(null)
                 .hostIdentity(hostIdentity)
@@ -375,6 +355,16 @@ public class PortScanner {
     private void doShowOutput(ScanSummary scanSummary) {
         outputFormatter.write(scanSummary, System.out);
         writeToFile(scanSummary);
+    }
+
+    private HostIdentity getHostIdentity(String host) {
+        Inet4Address hostAddress = PortScannerUtil.getHostInet4Address(host);
+        String hostAddressName = PortScannerUtil.getHostInet4AddressName(hostAddress.getHostAddress());
+        return new HostIdentity.Builder()
+                .hostInet4Address(hostAddress)
+                .hostAddress(hostAddress.getHostAddress())
+                .hostname(hostAddressName)
+                .build();
     }
 
     protected List<PortRange> getChunks(int startPort, int endPort, int batchSize) {
