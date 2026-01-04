@@ -188,6 +188,15 @@ public class ScanSummary {
         return "";
     }
 
+    /**
+     * Generates a detailed text summary of the scan process,
+     * including information about the user who initiated the
+     * scan, the command used, the duration of the scan, the
+     * scheduler ID, and port statistics. Additionally, it
+     * provides a breakdown of open ports organized by host.
+     *
+     * @return a string containing the detailed scan summary
+     */
     public String toSummary() {
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("Summary for: %s", OperatingSystemUtils.currentUser()))
@@ -214,6 +223,17 @@ public class ScanSummary {
         return sb.toString();
     }
 
+    /**
+     * Converts the current scan summary into a {@link SummaryNode} object.
+     * The created {@link SummaryNode} contains details such as the user who
+     * initiated the scan, the command used, the duration of the scan, the
+     * scheduler ID, the total number of ports scanned, and the counts of
+     * open, closed, and filtered ports. It also includes the mapping of hosts
+     * to their open ports.
+     *
+     * @return a {@link SummaryNode} object encapsulating the details of the
+     * scan summary
+     */
     public SummaryNode toSummaryNode() {
         return new SummaryNode(
                 OperatingSystemUtils.currentUser(),
