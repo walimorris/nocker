@@ -45,24 +45,86 @@ public class PortScanner {
     private final boolean sneak;
     private final boolean robust;
 
+    /**
+     * Minimum valid port number that can be scanned.
+     */
     public static final int MIN_PORT = 1;
+
+    /**
+     * Maximum valid port number that can be scanned.
+     */
     public static final int MAX_PORT = 65535;
 
+    /**
+     * Minimum number of ports in a single scan request before multi-threading.
+     */
     public static final int MIN_PORTS_CONCURRENCY_USAGE = 1000;
+
+    /**
+     * Default timeout for a single port scan attempt, in milliseconds.
+     */
     public static final int DEFAULT_TIMEOUT = 100;
+    /**
+     * Lower limit of acceptable scan timeout, in milliseconds.
+     */
     public static final int TIME_OUT_LOW_LIMIT = 50;
+
+    /**
+     * Upper limit of acceptable scan timeout, in milliseconds.
+     */
     public static final int TIME_OUT_HIGH_LIMIT = 200;
+
+    /**
+     * Target number of concurrent port scan threads by default.
+     */
     public static final int DEFAULT_CONCURRENCY = 5;
-    // for now, will allocate a single SourcePortAllocator as a range of source ports
+
+    /**
+     * Allocator for ephemeral source ports used during scans,
+     * constrained between MIN_EPHEMERAL_PORT and MAX_EPHEMERAL_PORT.
+     * @see SourcePortAllocator#MIN_EPHEMERAL_PORT
+     * @see SourcePortAllocator#MAX_EPHEMERAL_PORT
+     */
     public static final SourcePortAllocator sourcePortAllocator = new SourcePortAllocator(MIN_EPHEMERAL_PORT, MAX_EPHEMERAL_PORT);
 
+    /**
+     * Average duration of scanning a single port on a local host, in milliseconds.
+     */
     public static final float AVG_LOCAL_SCAN_MS = 0.05F;
+
+    /**
+     * Target completion time for a single scanning task on a local host, in milliseconds.
+     */
     public static final int TARGET_TASK_COMPLETION_LOCAL_MS = 100;
+
+    /**
+     * Average duration of scanning a single port on a remote host, in milliseconds.
+     */
     public static final int AVG_REMOTE_SCAN_MS = 60;
+
+    /**
+     * Target completion time for a single scanning task on a remote host, in milliseconds.
+     */
     public static final int TARGET_TASK_COMPLETION_REMOTE_MS = 500;
+
+    /**
+     * Minimum number of ports in a chunk when scanning a local host.
+     */
     public static final int CHUNK_PORTS_LOCAL_MIN = 500;
+
+    /**
+     * Maximum number of ports in a chunk when scanning a local host.
+     */
     public static final int CHUNK_PORTS_LOCAL_MAX = 3000;
+
+    /**
+     * Minimum number of ports in a chunk when scanning a remote host.
+     */
     public static final int CHUNK_PORTS_REMOTE_MIN = 1000;
+
+    /**
+     * Maximum number of ports in a batch (chunk) when scanning a remote host.
+     */
     public static final int CHUNK_PORTS_REMOTE_MAX = 6000;
 
     public PortScanner(InvocationCommand invocationCommand,
