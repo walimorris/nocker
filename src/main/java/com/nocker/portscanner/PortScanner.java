@@ -30,6 +30,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static com.nocker.portscanner.PortState.*;
 import static com.nocker.portscanner.SourcePortAllocator.*;
 
 // TODO: normalize arg inputs (ex: extra space in command will throw)
@@ -437,14 +438,14 @@ public class PortScanner {
         for (PortScanResult result : results) {
             int port = result.getPort();
             totalPortsScanned++;
-            if (result.getState().equals(PortState.OPEN)) {
+            if (result.getState().equals(OPEN)) {
                 openPortsCount++;
                 openHostPorts.computeIfAbsent(result.getHostAddress().getHostName(), host -> new HashSet<>())
                         .add(port);
-            } else if (result.getState().equals(PortState.FILTERED)) {
+            } else if (result.getState().equals(FILTERED)) {
                 filteredPortsCount++;
             } else {
-                if (result.getState().equals(PortState.CLOSED)) {
+                if (result.getState().equals(CLOSED)) {
                     closedPortsCount++;
                 }
             }
