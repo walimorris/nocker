@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
+// TODO: The name of this class is misleading - it's no dang engine! It's barely doing anything.
 public final class CommandEngine {
     private static final Logger LOGGER = LoggerFactory.getLogger(CommandEngine.class);
 
