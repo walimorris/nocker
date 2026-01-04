@@ -11,7 +11,7 @@ class PortScannerTest {
 
     @Test
     void testGetChunksValidScenario() {
-        PortScanner portScanner = new PortScanner(null, null, null, 100, 5, false);
+        PortScanner portScanner = new PortScanner(null, null, null, 100, 5, false, false);
 
         int startPort = 1;
         int endPort = 100;
@@ -29,7 +29,7 @@ class PortScannerTest {
 
     @Test
     void testGetChunksValidScenarioSinglePortScan() {
-        PortScanner portScanner = new PortScanner(null, null, null, 200, 5, true);
+        PortScanner portScanner = new PortScanner(null, null, null, 200, 5, true, false);
 
         int startPort = 4331;
         int endPort = 4332;
@@ -43,7 +43,7 @@ class PortScannerTest {
 
     @Test
     void testGetChunksSingleBatch() {
-        PortScanner portScanner = new PortScanner(null, null, null, 100, 5, false);
+        PortScanner portScanner = new PortScanner(null, null, null, 100, 5, false, false);
 
         int startPort = 1;
         int endPort = 50;
@@ -57,7 +57,7 @@ class PortScannerTest {
 
     @Test
     void testGetChunksRemainingPorts() {
-        PortScanner portScanner = new PortScanner(null, null, null, 100, 5, false);
+        PortScanner portScanner = new PortScanner(null, null, null, 100, 5, false, false);
 
         int startPort = 1;
         int endPort = 55;
@@ -73,7 +73,7 @@ class PortScannerTest {
 
     @Test
     void testGetChunksInvalidRange() {
-        PortScanner portScanner = new PortScanner(null, null, null, 100, 5, false);
+        PortScanner portScanner = new PortScanner(null, null, null, 100, 5, false, false);
 
         int startPort = 100;
         int endPort = 50;

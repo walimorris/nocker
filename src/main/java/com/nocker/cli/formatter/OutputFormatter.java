@@ -1,5 +1,6 @@
 package com.nocker.cli.formatter;
 
+import com.nocker.portscanner.report.ScanSummary;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.PrintStream;
@@ -21,6 +22,19 @@ public interface OutputFormatter {
      * @param out the output stream where the object will be written
      */
     void write(Object obj, PrintStream out);
+
+    /**
+     * Writes the provided {@link ScanSummary} to the specified output
+     * stream.
+     *
+     * @param scanSummary the summary of the scanning process to be written,
+     *                    containing details such as the number of open,
+     *                    closed, and filtered ports, total ports scanned,
+     *                    scan duration, and open ports per host
+     * @param out         the output stream where the scan summary will be
+     *                    written
+     */
+    void write(ScanSummary scanSummary, PrintStream out);
 
     /**
      * Writes the provided string content to the specified output stream.

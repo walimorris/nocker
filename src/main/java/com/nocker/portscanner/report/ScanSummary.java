@@ -1,9 +1,13 @@
 package com.nocker.portscanner.report;
 
+import com.nocker.OperatingSystemUtils;
 import com.nocker.portscanner.PortState;
+import com.nocker.portscanner.command.InvocationCommand;
 
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -23,29 +27,43 @@ public class ScanSummary {
     private final AtomicInteger filteredPortsCount = new AtomicInteger();
     private final AtomicInteger closedPortsCount = new AtomicInteger();
     private final AtomicInteger totalPortsScanned = new AtomicInteger();
-    private final Queue<Integer> openPorts = new ConcurrentLinkedQueue<>();
+    private final ConcurrentHashMap<String, Set<Integer>> openHostPorts = new ConcurrentHashMap<>();
+    private final UUID schedulerId;
+    private final InvocationCommand invocationCommand;
     private final long startTime;
     private long stopTime;
 
-    public ScanSummary(long startNanos) {
+    private static final String NEW_LINE = "\n";
+
+    public ScanSummary(long startNanos, UUID schedulerId, InvocationCommand command) {
         this.startTime = startNanos;
+        this.schedulerId = schedulerId;
+        this.invocationCommand = command;
     }
 
     /**
-     * Updates the scan summary based on the given port scan result.
-     * This method increments the appropriate counters for open,
-     * filtered, or closed ports and adds the port to the open ports
-     * queue if its state is {@code OPEN}.
+     * Updates the scan summary with the results of a port scan.
+     * This method processes the provided {@link PortScanResult}
+     * to update statistics about the total number of ports
+     * scanned, as well as the number of open, closed, and
+     * filtered ports. It also tracks which specific ports are
+     * open for each host.
      *
-     * @param result the {@code PortScanResult} containing information
-     *              about the scanned port, including its state
+     * @param result the result of a single port scan to be
+     *               incorporated into the scan summary. This
+     *               includes details about the scanned port's
+     *               state (e.g., open, closed, filtered), the
+     *               host address, and the port number.
      */
     public void update(PortScanResult result) {
         PortState state = result.getState();
         totalPortsScanned.incrementAndGet();
+        String currentHost = result.getHostAddress().getHostAddress();
+        int currentPort = result.getPort();
         if (state.equals(OPEN)) {
+            openHostPorts.computeIfAbsent(currentHost, host -> ConcurrentHashMap.newKeySet())
+                    .add(currentPort);
             openPortsCount.incrementAndGet();
-            openPorts.add(result.getPort());
         } else if (state.equals(FILTERED)) {
             filteredPortsCount.incrementAndGet();
         } else {
@@ -64,7 +82,7 @@ public class ScanSummary {
      * @return the total duration of the scan in milliseconds
      */
     public long durationMillis() {
-        return TimeUnit.MILLISECONDS.toMillis(stopTime - startTime);
+        return TimeUnit.NANOSECONDS.toMillis(stopTime - startTime);
     }
 
     /**
@@ -75,19 +93,6 @@ public class ScanSummary {
      */
     public void stop() {
         this.stopTime = System.nanoTime();
-    }
-
-    /**
-     * Retrieves a queue containing the ports that have been
-     * identified as open during the port scanning process.
-     * The queue stores the port numbers in the order in
-     * which they were detected as open.
-     *
-     * @return a queue of integers representing the list
-     * of open ports
-     */
-    public Queue<Integer> getOpenPorts() {
-        return openPorts;
     }
 
     /**
@@ -138,5 +143,88 @@ public class ScanSummary {
      */
     public int getTotalPortsScanned() {
         return this.totalPortsScanned.get();
+    }
+
+    /**
+     * Retrieves a map of hosts and their corresponding sets
+     * of open ports that were detected during the scanning
+     * process. Each entry in the map associates a host address
+     * (as a string) to a set of integers representing the
+     * ports that were identified as open.
+     *
+     * @return a map where the keys are host addresses as strings,
+     *         and the values are sets of integers representing
+     *         open ports
+     */
+    public Map<String, Set<Integer>> getOpenHostPorts() {
+        return this.openHostPorts;
+    }
+
+    /**
+     * Retrieves the identifier of the scheduler associated with
+     * this scan.
+     *
+     * @return the UUID that represents the scheduler ID
+     */
+    public UUID getSchedulerId() {
+        return this.schedulerId;
+    }
+
+    /**
+     * Retrieves the {@link InvocationCommand} associated with this
+     * scan summary. The {@link InvocationCommand} represents the
+     * command-line input, method, and arguments that were used to
+     * initiate the scan process.
+     *
+     * @return the {@link InvocationCommand} containing details about
+     * the scan invocation
+     */
+    public InvocationCommand getInvocationCommand() {
+        return this.invocationCommand;
+    }
+
+    @Override
+    public String toString() {
+        return "";
+    }
+
+    public String toSummary() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format("Summary for: %s", OperatingSystemUtils.currentUser()))
+                .append(NEW_LINE)
+                .append(String.format("Invocation Command: %s", invocationCommand.getCommandLineInput().getCommand()))
+                .append(NEW_LINE)
+                .append(String.format("Duration: %d", durationMillis()))
+                .append(NEW_LINE)
+                .append(String.format("Scheduler: %s", schedulerId))
+                .append(NEW_LINE)
+                .append(String.format("Total Ports Scanned: %d", totalPortsScanned.get()))
+                .append(NEW_LINE)
+                .append(String.format("Open Ports Count: %d", openPortsCount.get()))
+                .append(NEW_LINE)
+                .append(String.format("Closed Ports Count: %d", closedPortsCount.get()))
+                .append(NEW_LINE)
+                .append(String.format("Filtered Ports Count: %d", filteredPortsCount.get()))
+                .append(NEW_LINE)
+                .append("Breakdown of Open Ports by host: ").append(NEW_LINE);
+
+        for (Map.Entry<String, Set<Integer>> entry : openHostPorts.entrySet()) {
+            sb.append(String.format("Host: %s    [%s]", entry.getKey(), entry.getValue())).append(NEW_LINE);
+        }
+        return sb.toString();
+    }
+
+    public SummaryNode toSummaryNode() {
+        return new SummaryNode(
+                OperatingSystemUtils.currentUser(),
+                invocationCommand.getCommandLineInput().getCommand(),
+                durationMillis(),
+                schedulerId,
+                totalPortsScanned.get(),
+                openPortsCount.get(),
+                closedPortsCount.get(),
+                filteredPortsCount.get(),
+                openHostPorts
+        );
     }
 }

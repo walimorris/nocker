@@ -10,7 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-final class ArgumentConverter {
+public final class ArgumentConverter {
     private static final Logger LOGGER = LoggerFactory.getLogger(ArgumentConverter.class);
 
     private static final Class<?>[] validTypes = new Class[] {

@@ -1,5 +1,6 @@
 package com.nocker.portscanner.scheduler;
 
+import com.nocker.portscanner.command.InvocationCommand;
 import com.nocker.portscanner.report.PortScanReport;
 import com.nocker.portscanner.report.PortScanResult;
 
@@ -85,4 +86,13 @@ public interface PortScanScheduler extends Serializable {
      * @return the ExecutorService responsible for managing task execution
      */
     ExecutorService getExecutorService();
+
+    /**
+     * Retrieves the {@code InvocationCommand} associated with the scheduler.
+     *
+     * @return the {@code InvocationCommand} instance containing information
+     *         about the command-line input, the target method to invoke,
+     *         and its corresponding arguments
+     */
+    InvocationCommand getInvocationCommand();
 }

@@ -79,10 +79,10 @@ public final class NockerCommandLineInterface {
         return Boolean.parseBoolean(flags.getOrDefault(ROBUST.getFullName(), String.valueOf(false)));
     }
 
-    // we can make normal the default - for now I want to see json
+    // we can make txt the default - for now I want to see json
     private static OutputFormatter initOutputFormatter(Map<String, String> flags) {
         String format = flags.getOrDefault(FORMAT.getFullName(), "json");
-        if (format.equals("normal")) {
+        if (format.equals("txt")) {
             return new HumanReadableFormatter();
         }
         return new JsonFormatter();

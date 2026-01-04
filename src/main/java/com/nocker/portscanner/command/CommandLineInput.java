@@ -2,6 +2,7 @@ package com.nocker.portscanner.command;
 
 import com.nocker.Arg;
 import com.nocker.Flag;
+import com.nocker.command.ArgumentConverter;
 import com.nocker.command.MethodResolver;
 import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
@@ -33,7 +34,7 @@ public final class CommandLineInput {
     public static final String ARG_SEPARATOR = "=";
     public static final String SINGLE_DASH = "-";
     public static final String DOUBLE_DASH = "--";
-    public static final String EMPTY_SPACE = "\\s";
+    public static final String EMPTY_SPACE = " ";
 
     // move to enum
     private static final Set<String> legalMethods = new HashSet<>(Arrays.asList(
@@ -181,18 +182,23 @@ public final class CommandLineInput {
             throw new InvalidCommandException("Illegal command method: " + commandMethodName);
         }
         List<Method> possibleMethods = MethodResolver.filterMethodsFromCommand(commandMethodName, clazz);
-        boolean matchFound = false;
         for (Method method : possibleMethods) {
             Set<String> params = MethodResolver.getNockerParameterNamesFromMethod(method);
             Set<String> currentCommandArguments = arguments.keySet();
-            if (params.equals(currentCommandArguments)) {
+            if (!params.equals(currentCommandArguments)) {
+                continue;
+            }
+            LinkedHashMap<String, Class> currentMethodValues = null;
+            try {
+                currentMethodValues = MethodResolver.getNockerParameterNamesAndTypes(method);
+                ArgumentConverter.convertToObjectArray(currentMethodValues, arguments);
                 return new CommandMethod(commandMethodName, method.getName(), method);
+            } catch (IllegalArgumentException e) {
+                LOGGER.warn("Failed attempting converting arguments values to match command method with parameters: " +
+                        "[{}] to type [{}]", currentMethodValues, arguments);
             }
         }
-        if (!matchFound) {
-            throw new InvalidCommandException("The supplied arguments are invalid: " + arguments.keySet());
-        }
-        return null;
+        throw new InvalidCommandException("The supplied arguments are invalid: " + arguments.keySet());
     }
 
     private static Map<Class<?>, LinkedHashMap<String, String>> parseArgumentsAndFlags(String[] args) {

@@ -11,3 +11,9 @@ nocker cidr-scan --hosts=192.168.1.253/24 -t 1000 -c 300
 nocker scan --host=localhost --ports=0,1,8080,8081,8082,8083,8084
 nocker scan --host=scanme.nmap.org --ports=8080-8180 -t 5000 // loud mode
 nocker scan --host=scanme.nmap.org --ports=8080-8180 -t 5000 --sneak=true // sneak mode
+nocker scan --host=scanme.nmap.org --ports=8080-8180 -t 500 -c 500 -f json -r true -o results.json
+
+with intro of robust and human readable we need to separate the two.
+format - human readable, json
+robust - human readable with deep analysis, json with deep analysis
+out - where should the output (robust or non robust in the chosen format) be written to
