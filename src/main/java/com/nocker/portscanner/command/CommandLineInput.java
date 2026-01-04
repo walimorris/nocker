@@ -21,6 +21,7 @@ import java.util.*;
  *
  * @author Wali Morris
  */
+// TODO: Flags need to be validated for correct input as well. Example: sneak & robust should only accept boolean
 public final class CommandLineInput {
     private static final Logger LOGGER = LoggerFactory.getLogger(CommandLineInput.class);
 

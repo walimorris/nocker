@@ -9,7 +9,8 @@ public enum Flag {
     CONCURRENCY("concurrency", "c"),
     SYN("sneak", "s"),
     FORMAT("format", "f"),
-    OUT("out", "o");
+    OUT("out", "o"),
+    ROBUST("robust", "r");
 
     private final String full;
     private final String abbr;

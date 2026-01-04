@@ -18,6 +18,9 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
+import static com.nocker.Flag.*;
+
+// TODO: introduce a flag container. Passing so many individual flags into the PortScanner is ridiculous
 public final class NockerCommandLineInterface {
     private static final Logger LOGGER = LoggerFactory.getLogger(NockerCommandLineInterface.class);
 
@@ -47,8 +50,9 @@ public final class NockerCommandLineInterface {
         int concurrency = initConcurrency(flags);
         int timeout = initTimeout(flags);
         boolean syn = initSneakyLink(flags);
+        boolean robust = initRobust(flags);
         OutputFormatter outputFormatter = initOutputFormatter(flags);
-        PortScanner portScanner = new PortScanner(invocationCommand, nockerFileWriter, outputFormatter, timeout, concurrency, syn);
+        PortScanner portScanner = new PortScanner(invocationCommand, nockerFileWriter, outputFormatter, timeout, concurrency, syn, robust);
         try {
             invocationCommand.getMethod().invoke(portScanner, invocationCommand.getArgs());
         } catch (InvocationTargetException | IllegalAccessException exception) {
@@ -60,20 +64,24 @@ public final class NockerCommandLineInterface {
     }
 
     private static int initTimeout(Map<String, String> flags) {
-        return Integer.parseInt(flags.getOrDefault(Flag.TIMEOUT.getFullName(), String.valueOf(0)));
+        return Integer.parseInt(flags.getOrDefault(TIMEOUT.getFullName(), String.valueOf(0)));
     }
 
     private static int initConcurrency(Map<String, String> flags) {
-        return Integer.parseInt(flags.getOrDefault(Flag.CONCURRENCY.getFullName(), String.valueOf(0)));
+        return Integer.parseInt(flags.getOrDefault(CONCURRENCY.getFullName(), String.valueOf(0)));
     }
 
     private static boolean initSneakyLink(Map<String, String> flags) {
-        return Boolean.parseBoolean(flags.getOrDefault(Flag.SYN.getFullName(), String.valueOf(false)));
+        return Boolean.parseBoolean(flags.getOrDefault(SYN.getFullName(), String.valueOf(false)));
+    }
+
+    private static boolean initRobust(Map<String, String> flags) {
+        return Boolean.parseBoolean(flags.getOrDefault(ROBUST.getFullName(), String.valueOf(false)));
     }
 
     // we can make normal the default - for now I want to see json
     private static OutputFormatter initOutputFormatter(Map<String, String> flags) {
-        String format = flags.getOrDefault(Flag.FORMAT.getFullName(), "json");
+        String format = flags.getOrDefault(FORMAT.getFullName(), "json");
         if (format.equals("normal")) {
             return new HumanReadableFormatter();
         }

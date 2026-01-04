@@ -48,6 +48,7 @@ public class PortScanner {
     private final NockerFileWriter fileWriter;
     private final OutputFormatter outputFormatter;
     private final boolean sneak;
+    private final boolean robust;
 
     public static final int MIN_PORT = 1;
     public static final int MAX_PORT = 65535;
@@ -74,13 +75,15 @@ public class PortScanner {
                        OutputFormatter outputFormatter,
                        int timeout,
                        int concurrency,
-                       boolean sneak) {
+                       boolean sneak,
+                       boolean robust) {
         this.invocationCommand = invocationCommand;
         this.fileWriter = nockerFileWriter;
         this.outputFormatter = outputFormatter;
         this.timeout = timeout >= TIME_OUT_LOW_LIMIT && timeout <= TIME_OUT_HIGH_LIMIT ? timeout : DEFAULT_TIMEOUT;
         this.concurrency = concurrency >= 2 && concurrency <= 300 ? concurrency : DEFAULT_CONCURRENCY;
         this.sneak = sneak;
+        this.robust = robust;
     }
 
     // needs updating now that multiple host scans are supported
