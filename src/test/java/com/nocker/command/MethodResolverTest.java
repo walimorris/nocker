@@ -7,9 +7,7 @@ import com.nocker.portscanner.annotation.arguments.Port;
 import com.nocker.portscanner.annotation.arguments.Ports;
 import com.nocker.portscanner.annotation.commands.CIDRScan;
 import com.nocker.portscanner.annotation.commands.Scan;
-import com.nocker.portscanner.command.InvalidCommandException;
 import com.nocker.portscanner.wildcard.PortWildcard;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.lang.annotation.Annotation;
@@ -121,11 +119,8 @@ class MethodResolverTest {
 
     @Test
     void findClassFromCommandMethodNameThrowsInvalidCommandException() {
-        Exception exception = Assertions.assertThrows(InvalidCommandException.class, () -> {
-            MethodResolver.findClassFromCommandMethodName("cidr-scan-v2");
-        });
-        String expected = "Invalid multipart command method: [cidr-scan-v2]";
-        assertEquals(expected, exception.getMessage());
+        Class clazz = MethodResolver.findClassFromCommandMethodName("cidr-scan-v2");
+        assertNull(clazz);
     }
 
     @Test

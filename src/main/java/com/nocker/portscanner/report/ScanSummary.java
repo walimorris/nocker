@@ -23,11 +23,11 @@ import static com.nocker.portscanner.PortState.*;
  * @author Wali Morris
  */
 public class ScanSummary {
-    private final AtomicInteger openPortsCount = new AtomicInteger();
-    private final AtomicInteger filteredPortsCount = new AtomicInteger();
-    private final AtomicInteger closedPortsCount = new AtomicInteger();
-    private final AtomicInteger totalPortsScanned = new AtomicInteger();
-    private final ConcurrentHashMap<String, Set<Integer>> openHostPorts = new ConcurrentHashMap<>();
+    private final AtomicInteger openPortsCount;
+    private final AtomicInteger filteredPortsCount;
+    private final AtomicInteger closedPortsCount;
+    private final AtomicInteger totalPortsScanned;
+    private final ConcurrentHashMap<String, Set<Integer>> openHostPorts;
     private final UUID schedulerId;
     private final InvocationCommand invocationCommand;
     private final long startTime;
@@ -36,9 +36,36 @@ public class ScanSummary {
     private static final String NEW_LINE = "\n";
 
     public ScanSummary(long startNanos, UUID schedulerId, InvocationCommand command) {
+        this(startNanos,
+                schedulerId,
+                command,
+                0L,
+                new AtomicInteger(),
+                new AtomicInteger(),
+                new AtomicInteger(),
+                new AtomicInteger(),
+                new ConcurrentHashMap<>()
+        );
+    }
+
+    public ScanSummary(long startNanos,
+                       UUID schedulerId,
+                       InvocationCommand command,
+                       long stopTime,
+                       AtomicInteger openPortsCount,
+                       AtomicInteger filteredPortsCount,
+                       AtomicInteger closedPortsCount,
+                       AtomicInteger totalPortsScanned,
+                       Map<String, Set<Integer>> openHostPorts) {
         this.startTime = startNanos;
         this.schedulerId = schedulerId;
         this.invocationCommand = command;
+        this.stopTime = stopTime;
+        this.openPortsCount = openPortsCount;
+        this.filteredPortsCount = filteredPortsCount;
+        this.closedPortsCount = closedPortsCount;
+        this.totalPortsScanned = totalPortsScanned;
+        this.openHostPorts = new ConcurrentHashMap<>(openHostPorts);
     }
 
     /**

@@ -77,7 +77,7 @@ public class PortScanner {
     /**
      * Target number of concurrent port scan threads by default.
      */
-    public static final int DEFAULT_CONCURRENCY = 5;
+    public static final int DEFAULT_CONCURRENCY = 100;
 
     /**
      * Allocator for ephemeral source ports used during scans,
@@ -179,10 +179,13 @@ public class PortScanner {
     // scan complete
     public void scanSingleHostAndSinglePort(@Host String host, @Port int port) {
         HostIdentity hostIdentity = getHostIdentity(host);
+        long start = System.nanoTime();
         if (ObjectUtils.isNotEmpty(hostIdentity.getHostInet4Address())) {
             List<PortScanResult> result = submitTask(hostIdentity.getHostInet4Address(),
                     Collections.singletonList(port));
-            triggerResponse(result, hostIdentity);
+            long stop = System.nanoTime();
+            ScanSummary summary = generateScanSummaryFromPortScanResults(result, invocationCommand, start, stop);
+            triggerResponse(new PortScanReport(null, result, summary), hostIdentity);
         } else {
             PortScannerUtil.logInvalidHost(host);
         }
@@ -200,6 +203,7 @@ public class PortScanner {
             // local scans of ports less than MIN PORTS CURRENCY USAGE
             if (PortScannerUtil.isLocalHost(hostIdentity.getHostname()) && ports.size() < MIN_PORTS_CONCURRENCY_USAGE) {
                 List<PortScanResult> results = submitTask(hostIdentity.getHostInet4Address(), validPorts);
+                // TODO: build a ScanSummary and use with TriggerResponse()
                 triggerResponse(results, hostIdentity);
             } else {
                 AtomicInteger taskCount = new AtomicInteger(0);
@@ -236,7 +240,8 @@ public class PortScanner {
 
 
     // too slow - possible performance boost processing both hosts & addresses concurrently
-    // currently only processing ports concurrently, given a single hosts. too slow.
+    // currently only processing ports concurrently, given a single hosts. too slow. This is
+    // stupid slow, most likely coming from building the hostModels
     // scan logic complete
     @CIDRScan
     public void cidrScan(@Hosts CIDRWildcard hosts) {
@@ -259,7 +264,7 @@ public class PortScanner {
             }
             PortScanReport report = scanScheduler.shutdownAndCollect(taskCount);
             List<HostModel> hostModels = collectHostModels(scanScheduler, report.getResults());
-            triggerResponse(hostModels);
+            triggerResponse(report, hostModels);
         }
     }
 
@@ -344,8 +349,12 @@ public class PortScanner {
         return hostModels;
     }
 
-    private void triggerResponse(List<HostModel> batchHostResults) {
-        doShowOutput(batchHostResults);
+    private void triggerResponse(PortScanReport report, List<HostModel> batchHostResults) {
+        if (robust) {
+            doShowOutput(batchHostResults);
+        } else {
+            doShowOutput(report.getSummary());
+        }
     }
 
     private void triggerResponse(PortScanReport report, HostIdentity hostIdentity) {
@@ -417,6 +426,39 @@ public class PortScanner {
     private void doShowOutput(ScanSummary scanSummary) {
         outputFormatter.write(scanSummary, System.out);
         writeToFile(scanSummary);
+    }
+
+    private ScanSummary generateScanSummaryFromPortScanResults(List<PortScanResult> results, InvocationCommand command, long start, long stop) {
+        int openPortsCount = 0;
+        int filteredPortsCount = 0;
+        int closedPortsCount = 0;
+        int totalPortsScanned = 0;
+        HashMap<String, Set<Integer>> openHostPorts = new HashMap<>();
+        for (PortScanResult result : results) {
+            int port = result.getPort();
+            totalPortsScanned++;
+            if (result.getState().equals(PortState.OPEN)) {
+                openPortsCount++;
+                openHostPorts.computeIfAbsent(result.getHostAddress().getHostName(), host -> new HashSet<>())
+                        .add(port);
+            } else if (result.getState().equals(PortState.FILTERED)) {
+                filteredPortsCount++;
+            } else {
+                if (result.getState().equals(PortState.CLOSED)) {
+                    closedPortsCount++;
+                }
+            }
+        }
+        return new ScanSummary(start,
+                null,
+                command,
+                stop,
+                new AtomicInteger(openPortsCount),
+                new AtomicInteger(filteredPortsCount),
+                new AtomicInteger(closedPortsCount),
+                new AtomicInteger(totalPortsScanned),
+                openHostPorts
+        );
     }
 
     private HostIdentity getHostIdentity(String host) {

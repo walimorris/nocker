@@ -234,11 +234,6 @@ public class MethodResolver {
      * if found; otherwise returns {@code null}.
      */
     public static Class findClassFromCommandMethodName(String methodName) {
-        try {
-            methodName = normalizeClassMethodName(methodName);
-        } catch (InvalidCommandException e) {
-            throw new InvalidCommandException(e.getMessage());
-        }
         return METHOD_CLASS_HASH.getOrDefault(methodName, null);
     }
 
