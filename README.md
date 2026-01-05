@@ -178,11 +178,11 @@ As an example, for a local scan on `127.0.0.1`, Nocker generates these chunks:
 There are 66 chunks of 1,000 ports (up to port 65,535) in total. In Nocker, this translates to 66 **Tasks** sent to a single **Scheduler**.
 Why not just send all 65,535 ports as a single task, or one task per port (65k+ tasks)? Both approaches were tried, but they have several issues:
 
-1. **Zero back-pressure** – once the scheduler (consumer) receives a task with 65k+ ports, there’s no way to stop it.  
-   Adapting timeouts, aborting early, or dynamically submitting ports is impossible.
+1. **Zero back-pressure** – once the scheduler (consumer) receives a task with 65k+ ports, there’s no way to stop it. Adapting timeouts, 
+aborting early, or dynamically submitting ports is impossible.
 
-2. **Minimal observability** – a single 65k-port task starts and runs to completion. Long timeouts or the need for backoff cannot be handled.  
-   Chunking allows dynamic monitoring, backoff, and the ability to abort scans if necessary.
+2. **Minimal observability** – a single 65k-port task starts and runs to completion. Long timeouts or the need for backoff cannot be handled. 
+Chunking allows dynamic monitoring, backoff, and the ability to abort scans if necessary.
 
 3. **Poor use of parallelism & concurrency** – consider these scenarios:
 
