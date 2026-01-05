@@ -157,6 +157,32 @@ public class PortScanner {
         }
     }
 
+    /**
+     * The code below is a simple round robin strategy to determine schedulers
+     * for tasks. However, there's certainly a better way to do this in more
+     * as Nocker scales(Round Robin strategy here is fine). However, it may
+     * make sense (if MAX_SCHEDULERS increase, hosts to scan increases or chunks
+     * are host-independent) that a host-affine scheduling strategy is introduced.
+     * In this case, tasks will be deterministically routed to schedulers based
+     * on hostIdentity.
+     * <p>
+     * This ensures that all tasks with the same host are handled by the same
+     * scheduler, improves locality, reduces contention, and simplifies the
+     * aggregation of scan results (something currently slowing Nocker down).
+     *<pre>
+     *{@code
+     * PortScanScheduler scheduler = schedulers.get(i % schedulers.size());
+     *}
+     *</pre>
+     * Becomes:
+     * <p>
+     * <pre>
+     *{@code
+     * Math.abs(hostIdentity.hashCode()) % schedulers.size()
+     *}
+     * </pre>
+     * @param hosts
+     */
     @Scan
     public void scan(@Hosts List<String> hosts) {
         List<PortScanScheduler> schedulers = spawnSchedulers(hosts.size(), invocationCommand);
