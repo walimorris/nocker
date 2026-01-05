@@ -81,6 +81,11 @@ public class PortScanner {
     public static final int DEFAULT_CONCURRENCY = 100;
 
     /**
+     * The maximum number of concurrent {@code PortScanScheduler} instances.
+     */
+    public static final int MAX_SCHEDULERS = 3;
+
+    /**
      * Allocator for ephemeral source ports used during scans,
      * constrained between MIN_EPHEMERAL_PORT and MAX_EPHEMERAL_PORT.
      * @see SourcePortAllocator#MIN_EPHEMERAL_PORT
@@ -152,11 +157,17 @@ public class PortScanner {
         }
     }
 
-    // needs  updating now that multiple host scans are supported
     @Scan
     public void scan(@Hosts List<String> hosts) {
-        for (String host : hosts) {
-            scan(host);
+        List<PortScanScheduler> schedulers = spawnSchedulers(hosts.size(), invocationCommand);
+        Map<PortScanReport, HostIdentity> reports = new LinkedHashMap<>();
+        for (int i = 0; i < hosts.size(); i++) {
+            HostIdentity hostIdentity = getHostIdentity(hosts.get(i));
+            PortScanScheduler scheduler = schedulers.get(i % schedulers.size());
+            reports.put(singleHostScan(hostIdentity, scheduler), hostIdentity);
+        }
+        for (Map.Entry<PortScanReport, HostIdentity> entry : reports.entrySet()) {
+            triggerResponse(entry.getKey(), entry.getValue());
         }
     }
 
@@ -165,15 +176,22 @@ public class PortScanner {
     @Scan
     public void scan(@Host String host) {
         HostIdentity hostIdentity = getHostIdentity(host);
+        PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency, invocationCommand);
+        PortScanReport report = singleHostScan(hostIdentity, scanScheduler);
+        if (report != null) {
+            triggerResponse(report, hostIdentity);
+        }
+    }
+
+    private PortScanReport singleHostScan(HostIdentity hostIdentity, PortScanScheduler scheduler) {
         if (ObjectUtils.isNotEmpty(hostIdentity.getHostInet4Address())) {
             AtomicInteger taskCount = new AtomicInteger(0);
             int batchSize = getBatchSize(hostIdentity.getHostInet4Address());
             List<PortRange> chunks = getChunks(MIN_PORT, MAX_PORT, batchSize);
-            PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency, invocationCommand);
-            fireInTheHole(scanScheduler, hostIdentity.getHostInet4Address(), chunks, taskCount);
-            PortScanReport report = scanScheduler.shutdownAndCollect(taskCount);
-            triggerResponse(report, hostIdentity);
+            fireInTheHole(scheduler, hostIdentity.getHostInet4Address(), chunks, taskCount);
+            return scheduler.shutdownAndCollect(taskCount);
         }
+        return null;
     }
 
     @Scan
@@ -470,6 +488,29 @@ public class PortScanner {
                 .hostAddress(hostAddress.getHostAddress())
                 .hostname(hostAddressName)
                 .build();
+    }
+
+    /**
+     * Creates and initializes a list of {@code PortScanScheduler} instances
+     * based on the requested size, subject to the maximum allowable
+     * schedulers.
+     *
+     * @param requestedSize the desired number of schedulers to be created
+     * @param invocationCommand the {@code InvocationCommand} instance that
+     *                          contains the command-line input, target
+     *                          method, and its arguments for configuring
+     *                          each scheduler
+     * @return a list of {@code PortScanScheduler} instances, with the size
+     * determined by the smaller value between {@code requestedSize} and the
+     * {@link PortScanner#MAX_SCHEDULERS}
+     */
+    private List<PortScanScheduler> spawnSchedulers(int requestedSize, InvocationCommand invocationCommand) {
+        int count = Math.min(requestedSize, MAX_SCHEDULERS);
+        List<PortScanScheduler> schedulers = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            schedulers.add(new PortScanSynAckScheduler(invocationCommand));
+        }
+        return schedulers;
     }
 
     protected List<PortRange> getChunks(int startPort, int endPort, int batchSize) {

@@ -165,3 +165,34 @@ public scanMethod2(@Host String host, @Port int port, @SuspiciousPort int suspic
 ```
 This meets the design philosophy. It removes ambiguity and introduces a new argument that can be reused.
 Another way to solve this limitation is by introducing a `@Primary` annotation. 
+
+## Chunking
+
+In Nocker, chunking is the process of splitting large port ranges into easily digestible chunks. Another word for this is
+"batching", but we're not going to call it that.
+
+As an example, for a local scan on `127.0.0.1`, Nocker generates these chunks:
+
+![Nocker Chunks](images/chunks.png)
+
+There are 66 chunks of 1,000 ports (up to port 65,535) in total. In Nocker, this translates to 66 **Tasks** sent to a single **Scheduler**.
+Why not just send all 65,535 ports as a single task, or one task per port (65k+ tasks)? Both approaches were tried, but they have several issues:
+
+1. **Zero back-pressure** – once the scheduler (consumer) receives a task with 65k+ ports, there’s no way to stop it.  
+   Adapting timeouts, aborting early, or dynamically submitting ports is impossible.
+
+2. **Minimal observability** – a single 65k-port task starts and runs to completion. Long timeouts or the need for backoff cannot be handled.  
+   Chunking allows dynamic monitoring, backoff, and the ability to abort scans if necessary.
+
+3. **Poor use of parallelism & concurrency** – consider these scenarios:
+
+| Scenario | Tasks | Behavior |
+|----------|-------|---------|
+| **1 Task** | 1 | Wastes 99% of threads, no back-pressure, no cancellation. Worst-case runtime: `50ms * 65,535 ≈ 3,276,750 ms`. |
+| **65,535 Tasks** | 65,535 | 100 tasks run in parallel, threads never idle. Can cancel individual ports or implement backoff. Massive queue overhead (65k objects), more context switching, higher GC pressure. |
+| **66 Tasks** | 66 | Threads fully utilized, maximum parallelism, low memory/scheduling overhead, easy cancellation, natural back-pressure. |
+
+In these scenarios, **1 and 2 are similar in raw throughput**, but scenario 2 wastes resources. Nocker implements scenario 
+3 because it balances **task count, thread utilization, memory efficiency, observability, and back-pressure**.
+
+
