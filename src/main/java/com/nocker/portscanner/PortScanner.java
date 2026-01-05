@@ -447,6 +447,22 @@ public class PortScanner {
         writeToFile(scanSummary);
     }
 
+    /**
+     * Generates a {@code ScanSummary} object from the provided list of port scan
+     * results along with additional scan metadata such as the invocation command
+     * and start/stop timestamps. This method processes the scan results to
+     * calculate the total number of open, filtered, and closed ports, as well
+     * as builds a mapping of hostnames to their corresponding open ports.
+     *
+     * @param results a list of {@code PortScanResult} objects representing
+     *                the results of a port scan, including port states and
+     *                associated host information
+     * @param command the {@code InvocationCommand} containing details about
+     *                the executed scan command
+     * @param start the start timestamp of the scan in milliseconds
+     * @param stop the stop timestamp of the scan in milliseconds
+     * @return a {@code ScanSummary}
+     */
     private ScanSummary generateScanSummaryFromPortScanResults(List<PortScanResult> results, InvocationCommand command, long start, long stop) {
         int openPortsCount = 0;
         int filteredPortsCount = 0;
@@ -480,6 +496,15 @@ public class PortScanner {
         );
     }
 
+    /**
+     * Retrieves the identity details of a specified host by resolving
+     * its IPv4 address, host address, and hostname. This method
+     * creates a {@link HostIdentity} instance with the resolved values.
+     *
+     * @param host the hostname or IP address of the host to resolve
+     * @return a {@link HostIdentity} instance containing the resolved
+     * identity details of the specified host
+     */
     private HostIdentity getHostIdentity(String host) {
         Inet4Address hostAddress = PortScannerUtil.getHostInet4Address(host);
         String hostAddressName = PortScannerUtil.getHostInet4AddressName(hostAddress.getHostAddress());
@@ -513,6 +538,22 @@ public class PortScanner {
         return schedulers;
     }
 
+    /**
+     * Generates a list of {@code PortRange} objects representing sub-ranges
+     * of ports between a given starting port and ending port, divided into
+     * chunks of a specified batch size.
+     *
+     * @param startPort the starting port number (inclusive)
+     * @param endPort the ending port number (inclusive), which must not be
+     *                less than the starting port number
+     * @param batchSize the maximum size of each chunk of ports
+     * @return a list of {@code PortRange} objects, where each object represents
+     *         a range of ports. The batch size of each range will not exceed
+     *         {@code batchSize}, and all ranges together cover the full range
+     *         from {@code startPort} to {@code endPort}.
+     * @throws IllegalStateException if {@code endPort} is less than
+     * {@code startPort}
+     */
     protected List<PortRange> getChunks(int startPort, int endPort, int batchSize) {
         if (endPort < startPort) {
             throw new IllegalStateException("ending port can not be less than starting port");
