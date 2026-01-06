@@ -149,11 +149,41 @@ public class PortScanner {
         this.robust = robust;
     }
 
-    // needs updating now that multiple host scans are supported
     @Scan
     public void scan(@Hosts List<String> hosts, @Port int port) {
+        Map<PortScanReport, HostIdentity> reports = new LinkedHashMap<>();
         for (String host : hosts) {
-            scanSingleHostAndSinglePort(host, port);
+            HostIdentity hostIdentity = getHostIdentity(host);
+            PortScanReport report = singleHostAndSinglePortScan(hostIdentity, port);
+            if (report != null) {
+                reports.put(report, hostIdentity);
+            }
+        }
+        for (Map.Entry<PortScanReport, HostIdentity> entry : reports.entrySet()) {
+            triggerResponse(entry.getKey(), entry.getValue());
+        }
+    }
+
+    @Scan
+    // scan complete
+    public void scanSingleHostAndSinglePort(@Host String host, @Port int port) {
+        HostIdentity hostIdentity = getHostIdentity(host);
+        PortScanReport report = singleHostAndSinglePortScan(hostIdentity, port);
+        if (report != null) {
+            triggerResponse(report, hostIdentity);
+        }
+        // notify client otherwise
+    }
+
+    private PortScanReport singleHostAndSinglePortScan(HostIdentity hostIdentity, int port) {
+        long start = System.nanoTime();
+        if (ObjectUtils.isNotEmpty(hostIdentity.getHostInet4Address())) {
+            List<PortScanResult> result = submitTask(hostIdentity.getHostInet4Address(),
+                    Collections.singletonList(port));
+            long stop = System.nanoTime();
+            return generatePortScanReportFromPortScanResults(result, invocationCommand, start, stop);
+        } else {
+            return null;
         }
     }
 
@@ -207,6 +237,7 @@ public class PortScanner {
         if (report != null) {
             triggerResponse(report, hostIdentity);
         }
+        // notify client otherwise
     }
 
     private PortScanReport singleHostScan(HostIdentity hostIdentity, PortScanScheduler scheduler) {
@@ -218,22 +249,6 @@ public class PortScanner {
             return scheduler.shutdownAndCollect(taskCount);
         }
         return null;
-    }
-
-    @Scan
-    // scan complete
-    public void scanSingleHostAndSinglePort(@Host String host, @Port int port) {
-        HostIdentity hostIdentity = getHostIdentity(host);
-        long start = System.nanoTime();
-        if (ObjectUtils.isNotEmpty(hostIdentity.getHostInet4Address())) {
-            List<PortScanResult> result = submitTask(hostIdentity.getHostInet4Address(),
-                    Collections.singletonList(port));
-            long stop = System.nanoTime();
-            ScanSummary summary = generateScanSummaryFromPortScanResults(result, invocationCommand, start, stop);
-            triggerResponse(new PortScanReport(null, result, summary), hostIdentity);
-        } else {
-            PortScannerUtil.logInvalidHost(host);
-        }
     }
 
     // any filtering such as : PortScannerUtil.sortStringListPortsToIntegerList(ports)
@@ -474,7 +489,7 @@ public class PortScanner {
     }
 
     /**
-     * Generates a {@code ScanSummary} object from the provided list of port scan
+     * Generates a {@code PortScanReport} object from the provided list of port scan
      * results along with additional scan metadata such as the invocation command
      * and start/stop timestamps. This method processes the scan results to
      * calculate the total number of open, filtered, and closed ports, as well
@@ -487,9 +502,9 @@ public class PortScanner {
      *                the executed scan command
      * @param start the start timestamp of the scan in milliseconds
      * @param stop the stop timestamp of the scan in milliseconds
-     * @return a {@code ScanSummary}
+     * @return a {@link PortScanReport}
      */
-    private ScanSummary generateScanSummaryFromPortScanResults(List<PortScanResult> results, InvocationCommand command, long start, long stop) {
+    private PortScanReport generatePortScanReportFromPortScanResults(List<PortScanResult> results, InvocationCommand command, long start, long stop) {
         int openPortsCount = 0;
         int filteredPortsCount = 0;
         int closedPortsCount = 0;
@@ -510,7 +525,7 @@ public class PortScanner {
                 }
             }
         }
-        return new ScanSummary(start,
+        ScanSummary scanSummary = new ScanSummary(start,
                 null,
                 command,
                 stop,
@@ -520,6 +535,7 @@ public class PortScanner {
                 new AtomicInteger(totalPortsScanned),
                 openHostPorts
         );
+        return new PortScanReport(null, results, scanSummary);
     }
 
     /**
