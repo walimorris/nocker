@@ -1,5 +1,6 @@
 package com.nocker.portscanner;
 
+import com.nocker.cli.PortScannerContext;
 import com.nocker.portscanner.tasks.PortRange;
 import org.junit.jupiter.api.Test;
 
@@ -11,7 +12,10 @@ class PortScannerTest {
 
     @Test
     void testGetChunksValidScenario() {
-        PortScanner portScanner = new PortScanner(null, null, null, 100, 5, false, false);
+        PortScannerContext cxt = new PortScannerContext.Builder().invocationCommand(null)
+                .nockerFileWriter(null).outputFormatter(null).concurrency(100).timeout(5).syn(false)
+                .robust(false).build();
+        PortScanner portScanner = new PortScanner(cxt);
 
         int startPort = 1;
         int endPort = 100;
@@ -29,7 +33,10 @@ class PortScannerTest {
 
     @Test
     void testGetChunksValidScenarioSinglePortScan() {
-        PortScanner portScanner = new PortScanner(null, null, null, 200, 5, true, false);
+        PortScannerContext cxt = new PortScannerContext.Builder().invocationCommand(null)
+                .nockerFileWriter(null).outputFormatter(null).concurrency(200).timeout(5).syn(true)
+                .robust(false).build();
+        PortScanner portScanner = new PortScanner(cxt);
 
         int startPort = 4331;
         int endPort = 4332;
@@ -43,7 +50,10 @@ class PortScannerTest {
 
     @Test
     void testGetChunksSingleBatch() {
-        PortScanner portScanner = new PortScanner(null, null, null, 100, 5, false, false);
+        PortScannerContext cxt = new PortScannerContext.Builder().invocationCommand(null)
+                .nockerFileWriter(null).outputFormatter(null).concurrency(100).timeout(5).syn(false)
+                .robust(false).build();
+        PortScanner portScanner = new PortScanner(cxt);
 
         int startPort = 1;
         int endPort = 50;
@@ -57,7 +67,10 @@ class PortScannerTest {
 
     @Test
     void testGetChunksRemainingPorts() {
-        PortScanner portScanner = new PortScanner(null, null, null, 100, 5, false, false);
+        PortScannerContext cxt = new PortScannerContext.Builder().invocationCommand(null)
+                .nockerFileWriter(null).outputFormatter(null).concurrency(100).timeout(5).syn(false)
+                .robust(false).build();
+        PortScanner portScanner = new PortScanner(cxt);
 
         int startPort = 1;
         int endPort = 55;
@@ -73,7 +86,10 @@ class PortScannerTest {
 
     @Test
     void testGetChunksInvalidRange() {
-        PortScanner portScanner = new PortScanner(null, null, null, 100, 5, false, false);
+        PortScannerContext cxt = new PortScannerContext.Builder().invocationCommand(null)
+                .nockerFileWriter(null).outputFormatter(null).concurrency(100).timeout(5).syn(false)
+                .robust(false).build();
+        PortScanner portScanner = new PortScanner(cxt);
 
         int startPort = 100;
         int endPort = 50;

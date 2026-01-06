@@ -1,5 +1,6 @@
 package com.nocker.portscanner;
 
+import com.nocker.cli.PortScannerContext;
 import com.nocker.cli.formatter.OutputFormatter;
 import com.nocker.portscanner.annotation.arguments.Host;
 import com.nocker.portscanner.annotation.arguments.Hosts;
@@ -133,20 +134,16 @@ public class PortScanner {
      */
     public static final int CHUNK_PORTS_REMOTE_MAX = 6000;
 
-    public PortScanner(InvocationCommand invocationCommand,
-                       NockerFileWriter nockerFileWriter,
-                       OutputFormatter outputFormatter,
-                       int timeout,
-                       int concurrency,
-                       boolean sneak,
-                       boolean robust) {
-        this.invocationCommand = invocationCommand;
-        this.fileWriter = nockerFileWriter;
-        this.outputFormatter = outputFormatter;
-        this.timeout = timeout >= TIME_OUT_LOW_LIMIT && timeout <= TIME_OUT_HIGH_LIMIT ? timeout : DEFAULT_TIMEOUT;
-        this.concurrency = concurrency >= 2 && concurrency <= 300 ? concurrency : DEFAULT_CONCURRENCY;
-        this.sneak = sneak;
-        this.robust = robust;
+    public PortScanner(PortScannerContext cxt) {
+        this.invocationCommand = cxt.getInvocationCommand();
+        this.fileWriter = cxt.getNockerFileWriter();
+        this.outputFormatter = cxt.getOutputFormatter();
+        this.timeout = cxt.getTimeout() >= TIME_OUT_LOW_LIMIT && cxt.getTimeout() <= TIME_OUT_HIGH_LIMIT ?
+                cxt.getTimeout() : DEFAULT_TIMEOUT;
+        this.concurrency = cxt.getConcurrency() >= 2 && cxt.getConcurrency() <= 300 ?
+                cxt.getConcurrency() : DEFAULT_CONCURRENCY;
+        this.sneak = cxt.isSyn();
+        this.robust = cxt.isRobust();
     }
 
     @Scan

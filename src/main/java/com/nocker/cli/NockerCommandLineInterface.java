@@ -17,10 +17,10 @@ import org.slf4j.Marker;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
+import java.util.Objects;
 
 import static com.nocker.Flag.*;
 
-// TODO: introduce a flag container. Passing so many individual flags into the PortScanner is ridiculous
 public final class NockerCommandLineInterface {
     private static final Logger LOGGER = LoggerFactory.getLogger(NockerCommandLineInterface.class);
 
@@ -30,7 +30,8 @@ public final class NockerCommandLineInterface {
             // TODO: Sort of missed the boat on other lexical normalizations such as flag formats
             // but that can be refactored from (.parse()) at a later time.
             CommandLineInput commandLineInput = CommandLineInput.parse(args);
-            InvocationCommand invocationCommand = CommandEngine.retrieve(commandLineInput);
+            InvocationCommand invocationCommand = Objects.requireNonNull(CommandEngine.retrieve(commandLineInput),
+                    "Invocation Command is in legal null state.");
             String outPath = invocationCommand.getCommandLineInput()
                     .getFlags()
                     .getOrDefault(Flag.OUT.getFullName(), null);
@@ -55,7 +56,11 @@ public final class NockerCommandLineInterface {
         boolean syn = initSneakyLink(flags);
         boolean robust = initRobust(flags);
         OutputFormatter outputFormatter = initOutputFormatter(flags);
-        PortScanner portScanner = new PortScanner(invocationCommand, nockerFileWriter, outputFormatter, timeout, concurrency, syn, robust);
+        PortScannerContext cxt = new PortScannerContext.Builder()
+                .invocationCommand(invocationCommand).nockerFileWriter(nockerFileWriter)
+                .outputFormatter(outputFormatter).concurrency(concurrency).timeout(timeout)
+                .syn(syn).robust(robust).build();
+        PortScanner portScanner = new PortScanner(cxt);
         try {
             invocationCommand.getMethod().invoke(portScanner, invocationCommand.getArgs());
         } catch (InvocationTargetException | IllegalAccessException exception) {
