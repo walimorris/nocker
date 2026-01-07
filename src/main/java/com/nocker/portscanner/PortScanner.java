@@ -185,7 +185,7 @@ public class PortScanner {
     }
 
     /**
-     * The code below is a simple round robin strategy to determine schedulers
+     * The code below is a simple round-robin strategy to determine schedulers
      * for tasks. However, there's certainly a better way to do this in more
      * as Nocker scales(Round Robin strategy here is fine). However, it may
      * make sense (if MAX_SCHEDULERS increase, hosts to scan increases or chunks
