@@ -1,21 +1,76 @@
 package com.nocker.portscanner;
 
 import com.nocker.cli.PortScannerContext;
+import com.nocker.cli.formatter.OutputFormatter;
+import com.nocker.portscanner.command.InvocationCommand;
+import com.nocker.portscanner.report.PortScanResult;
+import com.nocker.portscanner.scheduler.PortScanScheduler;
+import com.nocker.portscanner.scheduler.PortScanSchedulerFactory;
 import com.nocker.portscanner.tasks.PortRange;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
+import java.net.Inet4Address;
+import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.List;
 
+import static com.nocker.portscanner.PortScanner.MAX_SCHEDULERS;
+import static com.nocker.portscanner.PortState.CLOSED;
+import static com.nocker.portscanner.PortState.OPEN;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PortScannerTest {
+    private static PortScannerContext BASIC_CXT;
+
+    @BeforeAll
+    static void setup() {
+        InvocationCommand BASIC_INVOCATION_COMMAND = Mockito.mock(InvocationCommand.class);
+        OutputFormatter BASIC_OUTPUT_FORMATTER = Mockito.mock(OutputFormatter.class);
+        PortScanSchedulerFactory BASIC_SCHEDULER_FACTORY = Mockito.mock(PortScanSchedulerFactory.class);
+
+        BASIC_CXT = new PortScannerContext.Builder()
+                .invocationCommand(BASIC_INVOCATION_COMMAND)
+                .nockerFileWriter(null).outputFormatter(BASIC_OUTPUT_FORMATTER)
+                .concurrency(100)
+                .schedulerFactory(BASIC_SCHEDULER_FACTORY)
+                .timeout(5).syn(false).robust(false).build();
+    }
+
+    @Test
+    void testSpawnSchedulersReturnsRequestedSize() {
+        PortScanner portScanner = new PortScanner(BASIC_CXT);
+        List<PortScanScheduler> schedulers = portScanner.spawnSchedulers(3);
+        assertEquals(3, schedulers.size());
+    }
+
+    @Test
+    void testSpawnSchedulersReturnsMaxSchedulersSizeAndNotRequestedSize() {
+        PortScanner portScanner = new PortScanner(BASIC_CXT);
+        int requestedSize = MAX_SCHEDULERS + 25;
+        List<PortScanScheduler> schedulers = portScanner.spawnSchedulers(requestedSize);
+        assertNotEquals(requestedSize, schedulers.size());
+        assertEquals(MAX_SCHEDULERS, schedulers.size());
+    }
+
+    @Test
+    void testSumSequentialDuration() throws UnknownHostException {
+        PortScanner portScanner = new PortScanner(BASIC_CXT);
+        Inet4Address address = (Inet4Address) Inet4Address.getLocalHost();
+        List<PortScanResult> results = Arrays.asList(
+                new PortScanResult(null, null, address, 8080, CLOSED, 1),
+                new PortScanResult(null, null, address, 8081, CLOSED, 2),
+                new PortScanResult(null, null, address, 8082, OPEN, 2),
+                new PortScanResult(null, null, address, 8083, CLOSED, 1)
+        );
+        long actualDuration = portScanner.sumSequentialDuration(results);
+        assertEquals(6, actualDuration);
+    }
 
     @Test
     void testGetChunksValidScenario() {
-        PortScannerContext cxt = new PortScannerContext.Builder().invocationCommand(null)
-                .nockerFileWriter(null).outputFormatter(null).concurrency(100).timeout(5).syn(false)
-                .robust(false).build();
-        PortScanner portScanner = new PortScanner(cxt);
+        PortScanner portScanner = new PortScanner(BASIC_CXT);
 
         int startPort = 1;
         int endPort = 100;
@@ -33,10 +88,7 @@ class PortScannerTest {
 
     @Test
     void testGetChunksValidScenarioSinglePortScan() {
-        PortScannerContext cxt = new PortScannerContext.Builder().invocationCommand(null)
-                .nockerFileWriter(null).outputFormatter(null).concurrency(200).timeout(5).syn(true)
-                .robust(false).build();
-        PortScanner portScanner = new PortScanner(cxt);
+        PortScanner portScanner = new PortScanner(BASIC_CXT);
 
         int startPort = 4331;
         int endPort = 4332;
@@ -50,10 +102,7 @@ class PortScannerTest {
 
     @Test
     void testGetChunksSingleBatch() {
-        PortScannerContext cxt = new PortScannerContext.Builder().invocationCommand(null)
-                .nockerFileWriter(null).outputFormatter(null).concurrency(100).timeout(5).syn(false)
-                .robust(false).build();
-        PortScanner portScanner = new PortScanner(cxt);
+        PortScanner portScanner = new PortScanner(BASIC_CXT);
 
         int startPort = 1;
         int endPort = 50;
@@ -67,10 +116,7 @@ class PortScannerTest {
 
     @Test
     void testGetChunksRemainingPorts() {
-        PortScannerContext cxt = new PortScannerContext.Builder().invocationCommand(null)
-                .nockerFileWriter(null).outputFormatter(null).concurrency(100).timeout(5).syn(false)
-                .robust(false).build();
-        PortScanner portScanner = new PortScanner(cxt);
+        PortScanner portScanner = new PortScanner(BASIC_CXT);
 
         int startPort = 1;
         int endPort = 55;
@@ -86,10 +132,7 @@ class PortScannerTest {
 
     @Test
     void testGetChunksInvalidRange() {
-        PortScannerContext cxt = new PortScannerContext.Builder().invocationCommand(null)
-                .nockerFileWriter(null).outputFormatter(null).concurrency(100).timeout(5).syn(false)
-                .robust(false).build();
-        PortScanner portScanner = new PortScanner(cxt);
+        PortScanner portScanner = new PortScanner(BASIC_CXT);
 
         int startPort = 100;
         int endPort = 50;

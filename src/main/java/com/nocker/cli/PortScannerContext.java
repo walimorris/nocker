@@ -2,6 +2,7 @@ package com.nocker.cli;
 
 import com.nocker.cli.formatter.OutputFormatter;
 import com.nocker.portscanner.command.InvocationCommand;
+import com.nocker.portscanner.scheduler.PortScanSchedulerFactory;
 import com.nocker.writer.NockerFileWriter;
 import com.nocker.portscanner.PortScanner;
 
@@ -28,6 +29,7 @@ public class PortScannerContext {
     private final InvocationCommand invocationCommand;
     private final NockerFileWriter nockerFileWriter;
     private final OutputFormatter outputFormatter;
+    private final PortScanSchedulerFactory schedulerFactory;
     private final int concurrency;
     private final int timeout;
     private final boolean syn;
@@ -37,6 +39,7 @@ public class PortScannerContext {
         this.invocationCommand = builder.invocationCommand;
         this.nockerFileWriter = builder.nockerFileWriter;
         this.outputFormatter = builder.outputFormatter;
+        this.schedulerFactory = builder.schedulerFactory;;
         this.concurrency = builder.concurrency;
         this.timeout = builder.timeout;
         this.syn = builder.syn;
@@ -53,6 +56,10 @@ public class PortScannerContext {
 
     public OutputFormatter getOutputFormatter() {
         return outputFormatter;
+    }
+
+    public PortScanSchedulerFactory getSchedulerFactory() {
+        return schedulerFactory;
     }
 
     public int getConcurrency() {
@@ -75,6 +82,7 @@ public class PortScannerContext {
         private InvocationCommand invocationCommand;
         private NockerFileWriter nockerFileWriter;
         private OutputFormatter outputFormatter;
+        private PortScanSchedulerFactory schedulerFactory;
         private int concurrency;
         private int timeout;
         private boolean syn;
@@ -92,6 +100,11 @@ public class PortScannerContext {
 
         public Builder outputFormatter(OutputFormatter outputFormatter) {
             this.outputFormatter = outputFormatter;
+            return this;
+        }
+
+        public Builder schedulerFactory(PortScanSchedulerFactory schedulerFactory) {
+            this.schedulerFactory = schedulerFactory;
             return this;
         }
 

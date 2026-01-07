@@ -15,7 +15,7 @@ import com.nocker.portscanner.report.PortScanReport;
 import com.nocker.portscanner.report.PortScanResult;
 import com.nocker.portscanner.report.ScanSummary;
 import com.nocker.portscanner.scheduler.PortScanScheduler;
-import com.nocker.portscanner.scheduler.PortScanSynAckScheduler;
+import com.nocker.portscanner.scheduler.PortScanSchedulerFactory;
 import com.nocker.portscanner.tasks.PortRange;
 import com.nocker.portscanner.tasks.PortScanSynAckTask;
 import com.nocker.portscanner.tasks.PortScanSynTask;
@@ -44,6 +44,7 @@ public class PortScanner {
     private final InvocationCommand invocationCommand;
     private final NockerFileWriter fileWriter;
     private final OutputFormatter outputFormatter;
+    private final PortScanSchedulerFactory schedulerFactory;
     private final boolean sneak;
     private final boolean robust;
 
@@ -135,13 +136,12 @@ public class PortScanner {
     public static final int CHUNK_PORTS_REMOTE_MAX = 6000;
 
     public PortScanner(PortScannerContext cxt) {
-        this.invocationCommand = cxt.getInvocationCommand();
+        this.invocationCommand = Objects.requireNonNull(cxt.getInvocationCommand(), "invocation command must be set");
         this.fileWriter = cxt.getNockerFileWriter();
-        this.outputFormatter = cxt.getOutputFormatter();
-        this.timeout = cxt.getTimeout() >= TIME_OUT_LOW_LIMIT && cxt.getTimeout() <= TIME_OUT_HIGH_LIMIT ?
-                cxt.getTimeout() : DEFAULT_TIMEOUT;
-        this.concurrency = cxt.getConcurrency() >= 2 && cxt.getConcurrency() <= 300 ?
-                cxt.getConcurrency() : DEFAULT_CONCURRENCY;
+        this.outputFormatter = Objects.requireNonNull(cxt.getOutputFormatter(), "formatter must be set");
+        this.schedulerFactory = Objects.requireNonNull(cxt.getSchedulerFactory(), "scheduler factory must be set");
+        this.timeout = cxt.getTimeout();
+        this.concurrency = cxt.getConcurrency();
         this.sneak = cxt.isSyn();
         this.robust = cxt.isRobust();
     }
@@ -212,7 +212,7 @@ public class PortScanner {
      */
     @Scan
     public void scan(@Hosts List<String> hosts) {
-        List<PortScanScheduler> schedulers = spawnSchedulers(hosts.size(), invocationCommand);
+        List<PortScanScheduler> schedulers = spawnSchedulers(hosts.size());
         Map<PortScanReport, HostIdentity> reports = new LinkedHashMap<>();
         for (int i = 0; i < hosts.size(); i++) {
             HostIdentity hostIdentity = getHostIdentity(hosts.get(i));
@@ -229,7 +229,7 @@ public class PortScanner {
     @Scan
     public void scan(@Host String host) {
         HostIdentity hostIdentity = getHostIdentity(host);
-        PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency, invocationCommand);
+        PortScanScheduler scanScheduler = schedulerFactory.create();
         PortScanReport report = singleHostScan(hostIdentity, scanScheduler);
         if (report != null) {
             triggerResponse(report, hostIdentity);
@@ -268,7 +268,7 @@ public class PortScanner {
                 int batchSize = getBatchSize(hostIdentity.getHostInet4Address());
                 List<Integer> sortedPorts = PortScannerUtil.sortStringListPortsToIntegerList(ports);
                 List<PortRange> chunks = getChunks(sortedPorts.get(0), sortedPorts.get(sortedPorts.size() - 1), batchSize);
-                PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency, invocationCommand);
+                PortScanScheduler scanScheduler = schedulerFactory.create();
                 fireInTheHole(scanScheduler, hostIdentity.getHostInet4Address(), chunks, taskCount);
                 PortScanReport report = scanScheduler.shutdownAndCollect(taskCount);
                 triggerResponse(report, hostIdentity);
@@ -284,7 +284,7 @@ public class PortScanner {
             int batchSize = getBatchSize(hostIdentity.getHostInet4Address());
             AtomicInteger taskCount = new AtomicInteger(0);
             List<PortRange> chunks = getChunks(ports.getLowPort(), ports.getHighPort(), batchSize);
-            PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency, invocationCommand);
+            PortScanScheduler scanScheduler = schedulerFactory.create();
             fireInTheHole(scanScheduler, hostIdentity.getHostInet4Address(), chunks, taskCount);
             PortScanReport report = scanScheduler.shutdownAndCollect(taskCount);
             triggerResponse(report, hostIdentity);
@@ -312,7 +312,7 @@ public class PortScanner {
             List<PortRange> chunks = getChunks(MIN_PORT, MAX_PORT, batchSize);
 
             AtomicInteger taskCount = new AtomicInteger(0);
-            PortScanSynAckScheduler scanScheduler = new PortScanSynAckScheduler(concurrency, invocationCommand);
+            PortScanScheduler scanScheduler = schedulerFactory.create();
             while (hosts.getOctets()[3] < 255) {
                 Inet4Address address = PortScannerUtil.getHostInet4Address(hosts.getAddress());
                 if (ObjectUtils.isNotEmpty(address)) {
@@ -558,24 +558,25 @@ public class PortScanner {
     }
 
     /**
-     * Creates and initializes a list of {@code PortScanScheduler} instances
-     * based on the requested size, subject to the maximum allowable
-     * schedulers.
+     * Spawns a list of {@code PortScanScheduler} instances based
+     * on the requested size, limited to a maximum number defined
+     * by {@code MAX_SCHEDULERS}. The method dynamically creates
+     * the schedulers using the factory method and caps the total
+     * number of schedulers to avoid exceeding the pre-defined
+     * limit.
      *
-     * @param requestedSize the desired number of schedulers to be created
-     * @param invocationCommand the {@code InvocationCommand} instance that
-     *                          contains the command-line input, target
-     *                          method, and its arguments for configuring
-     *                          each scheduler
-     * @return a list of {@code PortScanScheduler} instances, with the size
-     * determined by the smaller value between {@code requestedSize} and the
-     * {@link PortScanner#MAX_SCHEDULERS}
+     * @param requestedSize the number of schedulers to spawn,
+     *                     subject to the {@code MAX_SCHEDULERS}
+     *                     limit
+     * @return a list of {@code PortScanScheduler} instances,
+     * with the size being the lesser of {@code requestedSize}
+     * and the maximum allowed schedulers
      */
-    private List<PortScanScheduler> spawnSchedulers(int requestedSize, InvocationCommand invocationCommand) {
+    protected List<PortScanScheduler> spawnSchedulers(int requestedSize) {
         int count = Math.min(requestedSize, MAX_SCHEDULERS);
         List<PortScanScheduler> schedulers = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            schedulers.add(new PortScanSynAckScheduler(invocationCommand));
+            schedulers.add(schedulerFactory.create());
         }
         return schedulers;
     }
@@ -641,7 +642,7 @@ public class PortScanner {
      *                produced by a sequential scan
      * @return the total elapsed duration in milliseconds
      */
-    private long sumSequentialDuration(List<PortScanResult> results) {
+    protected long sumSequentialDuration(List<PortScanResult> results) {
         long total = 0L;
         for (PortScanResult result : results) {
             total += result.getDurationMillis();

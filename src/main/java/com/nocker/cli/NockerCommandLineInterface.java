@@ -9,6 +9,7 @@ import com.nocker.cli.formatter.OutputFormatter;
 import com.nocker.portscanner.PortScanner;
 import com.nocker.portscanner.command.CommandLineInput;
 import com.nocker.portscanner.command.InvocationCommand;
+import com.nocker.portscanner.scheduler.PortScanSynAckSchedulerFactory;
 import com.nocker.writer.NockerFileWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import static com.nocker.Flag.*;
+import static com.nocker.portscanner.PortScanner.*;
 
 public final class NockerCommandLineInterface {
     private static final Logger LOGGER = LoggerFactory.getLogger(NockerCommandLineInterface.class);
@@ -58,6 +60,7 @@ public final class NockerCommandLineInterface {
         OutputFormatter outputFormatter = initOutputFormatter(flags);
         PortScannerContext cxt = new PortScannerContext.Builder()
                 .invocationCommand(invocationCommand).nockerFileWriter(nockerFileWriter)
+                .schedulerFactory(new PortScanSynAckSchedulerFactory(invocationCommand,  concurrency))
                 .outputFormatter(outputFormatter).concurrency(concurrency).timeout(timeout)
                 .syn(syn).robust(robust).build();
         PortScanner portScanner = new PortScanner(cxt);
@@ -67,16 +70,18 @@ public final class NockerCommandLineInterface {
             LOGGER.error("Error invoking command method [{}#{}] with parameters {}: {}",
                     invocationCommand.getMethod().getClass().getName(),
                     invocationCommand.getMethod().getName(), invocationCommand.getMethod().getParameters(),
-                    exception.getStackTrace());
+                    exception.getMessage());
         }
     }
 
     private static int initTimeout(Map<String, String> flags) {
-        return Integer.parseInt(flags.getOrDefault(TIMEOUT.getFullName(), String.valueOf(0)));
+        int timeout = Integer.parseInt(flags.getOrDefault(TIMEOUT.getFullName(), String.valueOf(0)));
+        return timeout >= TIME_OUT_LOW_LIMIT && timeout <= TIME_OUT_HIGH_LIMIT ? timeout : DEFAULT_TIMEOUT;
     }
 
     private static int initConcurrency(Map<String, String> flags) {
-        return Integer.parseInt(flags.getOrDefault(CONCURRENCY.getFullName(), String.valueOf(0)));
+        int concurrency = Integer.parseInt(flags.getOrDefault(CONCURRENCY.getFullName(), String.valueOf(PortScanner.DEFAULT_CONCURRENCY)));
+        return concurrency >= 2 && concurrency <= 300 ? concurrency : DEFAULT_CONCURRENCY;
     }
 
     private static boolean initSneakyLink(Map<String, String> flags) {
@@ -87,7 +92,6 @@ public final class NockerCommandLineInterface {
         return Boolean.parseBoolean(flags.getOrDefault(ROBUST.getFullName(), String.valueOf(false)));
     }
 
-    // we can make txt the default - for now I want to see json
     private static OutputFormatter initOutputFormatter(Map<String, String> flags) {
         String format = flags.getOrDefault(FORMAT.getFullName(), "json");
         if (format.equals("txt")) {
