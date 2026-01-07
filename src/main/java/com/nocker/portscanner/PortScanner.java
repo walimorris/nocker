@@ -178,7 +178,7 @@ public class PortScanner {
             List<PortScanResult> result = submitTask(hostIdentity.getHostInet4Address(),
                     Collections.singletonList(port));
             long stop = System.nanoTime();
-            return generatePortScanReportFromPortScanResults(result, invocationCommand, start, stop);
+            return generatePortScanReportFromPortScanResults(result, invocationCommand, start, stop, 0L);
         } else {
             return null;
         }
@@ -260,8 +260,9 @@ public class PortScanner {
             // local scans of ports less than MIN PORTS CURRENCY USAGE
             if (PortScannerUtil.isLocalHost(hostIdentity.getHostname()) && ports.size() < MIN_PORTS_CONCURRENCY_USAGE) {
                 List<PortScanResult> results = submitTask(hostIdentity.getHostInet4Address(), validPorts);
-                // TODO: build a ScanSummary and use with TriggerResponse()
-                triggerResponse(results, hostIdentity);
+                PortScanReport report = generatePortScanReportFromPortScanResults(results, invocationCommand, 0L,
+                        0L, sumSequentialDuration(results));
+                triggerResponse(report, hostIdentity);
             } else {
                 AtomicInteger taskCount = new AtomicInteger(0);
                 int batchSize = getBatchSize(hostIdentity.getHostInet4Address());
@@ -501,7 +502,8 @@ public class PortScanner {
      * @param stop the stop timestamp of the scan in milliseconds
      * @return a {@link PortScanReport}
      */
-    private PortScanReport generatePortScanReportFromPortScanResults(List<PortScanResult> results, InvocationCommand command, long start, long stop) {
+    private PortScanReport generatePortScanReportFromPortScanResults(List<PortScanResult> results, InvocationCommand command,
+                                                                     long start, long stop, long duration) {
         int openPortsCount = 0;
         int filteredPortsCount = 0;
         int closedPortsCount = 0;
@@ -526,6 +528,7 @@ public class PortScanner {
                 null,
                 command,
                 stop,
+                duration,
                 new AtomicInteger(openPortsCount),
                 new AtomicInteger(filteredPortsCount),
                 new AtomicInteger(closedPortsCount),
@@ -616,6 +619,34 @@ public class PortScanner {
             startPort = segmentEnd + 1;
         }
         return portRanges;
+    }
+
+    /**
+     * Calculates the total elapsed duration for a set of port scan
+     * results that were executed sequentially.
+     * <p>
+     * This method assumes that each {@link PortScanResult} represents
+     * a non-overlapping unit of work and that the scans were performed
+     * one after another in a single execution context. Under these
+     * conditions, the sum of individual durations is equivalent to
+     * the wall-clock time observed by the caller.
+     * <p>
+     * <strong>Important:</strong> This method must <em>not</em> be used
+     * for results produced by concurrent or parallel scans, as summing
+     * overlapping durations will overstate the actual elapsed time.
+     * For concurrent scans, wall-clock duration should be calculated
+     * using the overall start and end timestamps instead.
+     *
+     * @param results the list of {@link PortScanResult} instances
+     *                produced by a sequential scan
+     * @return the total elapsed duration in milliseconds
+     */
+    private long sumSequentialDuration(List<PortScanResult> results) {
+        long total = 0L;
+        for (PortScanResult result : results) {
+            total += result.getDurationMillis();
+        }
+        return total;
     }
 
     private int getBatchSize(Inet4Address address) {

@@ -32,6 +32,7 @@ public class ScanSummary {
     private final InvocationCommand invocationCommand;
     private final long startTime;
     private long stopTime;
+    private final long durationMillis;
 
     private static final String NEW_LINE = "\n";
 
@@ -39,6 +40,7 @@ public class ScanSummary {
         this(startNanos,
                 schedulerId,
                 command,
+                0L,
                 0L,
                 new AtomicInteger(),
                 new AtomicInteger(),
@@ -52,6 +54,7 @@ public class ScanSummary {
                        UUID schedulerId,
                        InvocationCommand command,
                        long stopTime,
+                       long durationMillis,
                        AtomicInteger openPortsCount,
                        AtomicInteger filteredPortsCount,
                        AtomicInteger closedPortsCount,
@@ -61,6 +64,7 @@ public class ScanSummary {
         this.schedulerId = schedulerId;
         this.invocationCommand = command;
         this.stopTime = stopTime;
+        this.durationMillis = durationMillis;
         this.openPortsCount = openPortsCount;
         this.filteredPortsCount = filteredPortsCount;
         this.closedPortsCount = closedPortsCount;
@@ -101,15 +105,20 @@ public class ScanSummary {
     }
 
     /**
-     * Calculates the duration of the scan in milliseconds.
-     * The duration is determined as the difference between
-     * the stop time and the start time of the scan,
-     * converted to milliseconds.
+     * Calculates and returns the duration of the scan
+     * in milliseconds. If the duration has been
+     * precomputed and stored, it is returned directly.
+     * Otherwise, the duration is calculated as the
+     * difference between the stop time and the start
+     * time, converted from nanoseconds to milliseconds.
      *
-     * @return the total duration of the scan in milliseconds
+     * @return the duration of the scan in milliseconds
      */
     public long durationMillis() {
-        return TimeUnit.NANOSECONDS.toMillis(stopTime - startTime);
+        if (this.durationMillis == 0L) {
+            return TimeUnit.NANOSECONDS.toMillis(stopTime - startTime);
+        }
+        return durationMillis;
     }
 
     /**
