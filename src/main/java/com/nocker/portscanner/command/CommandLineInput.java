@@ -23,7 +23,7 @@ import java.util.*;
  * @author Wali Morris
  */
 // TODO: Flags need to be validated for correct input as well. Example: sneak & robust should only accept boolean
-public final class CommandLineInput {
+public class CommandLineInput {
     private static final Logger LOGGER = LoggerFactory.getLogger(CommandLineInput.class);
 
     private final String command;
@@ -42,7 +42,7 @@ public final class CommandLineInput {
             "cidr-scan"
     ));
 
-    private CommandLineInput(String command, CommandMethod commandMethod, LinkedHashMap<String, String> args,
+    public CommandLineInput(String command, CommandMethod commandMethod, LinkedHashMap<String, String> args,
             LinkedHashMap<String, String> flags) {
         this.command = command;
         this.commandMethod = commandMethod;

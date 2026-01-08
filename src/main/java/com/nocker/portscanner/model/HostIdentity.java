@@ -13,6 +13,12 @@ public class HostIdentity {
     private final String hostAddress;
     private final String hostname;
 
+    public HostIdentity(Inet4Address hostInet4Address, String hostAddress, String hostname) {
+        this.hostInet4Address = hostInet4Address;
+        this.hostAddress = hostAddress;
+        this.hostname = hostname;
+    }
+
     HostIdentity(Builder builder) {
         this.hostInet4Address = builder.hostInet4Address;
         this.hostAddress = builder.hostAddress;

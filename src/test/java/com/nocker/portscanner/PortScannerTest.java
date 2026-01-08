@@ -2,7 +2,9 @@ package com.nocker.portscanner;
 
 import com.nocker.cli.PortScannerContext;
 import com.nocker.cli.formatter.OutputFormatter;
+import com.nocker.portscanner.command.CommandLineInput;
 import com.nocker.portscanner.command.InvocationCommand;
+import com.nocker.portscanner.report.PortScanReport;
 import com.nocker.portscanner.report.PortScanResult;
 import com.nocker.portscanner.scheduler.PortScanScheduler;
 import com.nocker.portscanner.scheduler.PortScanSchedulerFactory;
@@ -10,25 +12,29 @@ import com.nocker.portscanner.tasks.PortRange;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.mockito.internal.util.collections.Sets;
 
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 import static com.nocker.portscanner.PortScanner.MAX_SCHEDULERS;
 import static com.nocker.portscanner.PortState.CLOSED;
 import static com.nocker.portscanner.PortState.OPEN;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
 
 class PortScannerTest {
     private static PortScannerContext BASIC_CXT;
+    private static InvocationCommand BASIC_INVOCATION_COMMAND;
+    private static OutputFormatter BASIC_OUTPUT_FORMATTER;
+    private static PortScanSchedulerFactory BASIC_SCHEDULER_FACTORY;
 
     @BeforeAll
     static void setup() {
-        InvocationCommand BASIC_INVOCATION_COMMAND = Mockito.mock(InvocationCommand.class);
-        OutputFormatter BASIC_OUTPUT_FORMATTER = Mockito.mock(OutputFormatter.class);
-        PortScanSchedulerFactory BASIC_SCHEDULER_FACTORY = Mockito.mock(PortScanSchedulerFactory.class);
+        BASIC_INVOCATION_COMMAND = Mockito.mock(InvocationCommand.class);
+        BASIC_OUTPUT_FORMATTER = Mockito.mock(OutputFormatter.class);
+        BASIC_SCHEDULER_FACTORY = Mockito.mock(PortScanSchedulerFactory.class);
 
         BASIC_CXT = new PortScannerContext.Builder()
                 .invocationCommand(BASIC_INVOCATION_COMMAND)
@@ -36,6 +42,39 @@ class PortScannerTest {
                 .concurrency(100)
                 .schedulerFactory(BASIC_SCHEDULER_FACTORY)
                 .timeout(5).syn(false).robust(false).build();
+    }
+
+    @Test
+    void testGeneratePortScanReportFromPortScanResults() throws UnknownHostException {
+        PortScanner portScanner = new PortScanner(BASIC_CXT);
+        UUID taskId = UUID.randomUUID();
+        Inet4Address address = (Inet4Address) Inet4Address.getLocalHost();
+        PortScanResult result1 = new PortScanResult(null, taskId, address, 8080, OPEN, 1);
+        PortScanResult result2 = new PortScanResult(null, taskId, address, 8081, OPEN, 1);
+        PortScanResult result3 = new PortScanResult(null, taskId, address, 8082, CLOSED, 2);
+        PortScanResult result4 = new PortScanResult(null, taskId, address, 8083, CLOSED, 1);
+        List<PortScanResult> results = Arrays.asList(result1, result2, result3, result4);
+
+        String command = "nocker scan --host=127.0.0.1 --ports=8080,8081,8082,8083";
+        CommandLineInput CLI = Mockito.mock(CommandLineInput.class);
+        when(BASIC_INVOCATION_COMMAND.getCommandLineInput()).thenReturn(CLI);
+        when(CLI.getCommand()).thenReturn(command);
+
+        PortScanReport report = portScanner.generatePortScanReportFromPortScanResults(results);
+        Set<Integer> openPorts = Sets.newSet(8080, 8081);
+
+        assertNotNull(report);
+        assertNull(report.getPortScanScheduler());
+        assertNotNull(report.getSummary());
+        assertEquals(4, report.getResults().size());
+        assertEquals(2, report.getSummary().getClosedPortsCount());
+        assertEquals(2, report.getSummary().getOpenPortsCount());
+        assertEquals(4, report.getSummary().getTotalPortsScanned());
+        assertEquals(5, report.getSummary().durationMillis());
+        assertTrue(report.getSummary().getOpenHostPorts().containsKey(address.getHostName()));
+        assertEquals(command, report.getSummary().getInvocationCommand()
+                .getCommandLineInput().getCommand());
+        assertEquals(openPorts, report.getSummary().getOpenHostPorts().get(address.getHostName()));
     }
 
     @Test

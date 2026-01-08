@@ -151,9 +151,11 @@ public class PortScanner {
         Map<PortScanReport, HostIdentity> reports = new LinkedHashMap<>();
         for (String host : hosts) {
             HostIdentity hostIdentity = getHostIdentity(host);
-            PortScanReport report = singleHostAndSinglePortScan(hostIdentity, port);
-            if (report != null) {
-                reports.put(report, hostIdentity);
+            if (hostIdentity != null) {
+                PortScanReport report = singleHostAndSinglePortScan(hostIdentity, port);
+                if (report != null) {
+                    reports.put(report, hostIdentity);
+                }
             }
         }
         for (Map.Entry<PortScanReport, HostIdentity> entry : reports.entrySet()) {
@@ -165,20 +167,20 @@ public class PortScanner {
     // scan complete
     public void scanSingleHostAndSinglePort(@Host String host, @Port int port) {
         HostIdentity hostIdentity = getHostIdentity(host);
-        PortScanReport report = singleHostAndSinglePortScan(hostIdentity, port);
-        if (report != null) {
-            triggerResponse(report, hostIdentity);
+        if (hostIdentity != null) {
+            PortScanReport report = singleHostAndSinglePortScan(hostIdentity, port);
+            if (report != null) {
+                triggerResponse(report, hostIdentity);
+            }
         }
         // notify client otherwise
     }
 
     private PortScanReport singleHostAndSinglePortScan(HostIdentity hostIdentity, int port) {
-        long start = System.nanoTime();
         if (ObjectUtils.isNotEmpty(hostIdentity.getHostInet4Address())) {
             List<PortScanResult> result = submitTask(hostIdentity.getHostInet4Address(),
                     Collections.singletonList(port));
-            long stop = System.nanoTime();
-            return generatePortScanReportFromPortScanResults(result, invocationCommand, start, stop, 0L);
+            return generatePortScanReportFromPortScanResults(result);
         } else {
             return null;
         }
@@ -230,9 +232,11 @@ public class PortScanner {
     public void scan(@Host String host) {
         HostIdentity hostIdentity = getHostIdentity(host);
         PortScanScheduler scanScheduler = schedulerFactory.create();
-        PortScanReport report = singleHostScan(hostIdentity, scanScheduler);
-        if (report != null) {
-            triggerResponse(report, hostIdentity);
+        if (hostIdentity != null) {
+            PortScanReport report = singleHostScan(hostIdentity, scanScheduler);
+            if (report != null) {
+                triggerResponse(report, hostIdentity);
+            }
         }
         // notify client otherwise
     }
@@ -255,13 +259,17 @@ public class PortScanner {
     @Scan
     public void scan(@Host String host, @Ports List<String> ports) {
         HostIdentity hostIdentity = getHostIdentity(host);
+        if (hostIdentity == null) {
+            // notify
+            LOGGER.warn("Cannot scan nonexistent host: {}", host);
+            return;
+        }
         List<Integer> validPorts = PortScannerUtil.convertListOfPortStringsToIntegers(ports);
         if (ObjectUtils.isNotEmpty(hostIdentity.getHostInet4Address()) && ObjectUtils.isNotEmpty(validPorts)) {
             // local scans of ports less than MIN PORTS CURRENCY USAGE
             if (PortScannerUtil.isLocalHost(hostIdentity.getHostname()) && ports.size() < MIN_PORTS_CONCURRENCY_USAGE) {
                 List<PortScanResult> results = submitTask(hostIdentity.getHostInet4Address(), validPorts);
-                PortScanReport report = generatePortScanReportFromPortScanResults(results, invocationCommand, 0L,
-                        0L, sumSequentialDuration(results));
+                PortScanReport report = generatePortScanReportFromPortScanResults(results);
                 triggerResponse(report, hostIdentity);
             } else {
                 AtomicInteger taskCount = new AtomicInteger(0);
@@ -280,6 +288,11 @@ public class PortScanner {
     @Scan
     public void scan(@Host String host, @Ports PortWildcard ports) {
         HostIdentity hostIdentity = getHostIdentity(host);
+        if (hostIdentity == null) {
+            // notify
+            LOGGER.warn("Cannot scan nonexistent host: {}", host);
+            return;
+        }
         if (ObjectUtils.isNotEmpty(hostIdentity.getHostInet4Address())) {
             int batchSize = getBatchSize(hostIdentity.getHostInet4Address());
             AtomicInteger taskCount = new AtomicInteger(0);
@@ -488,22 +501,17 @@ public class PortScanner {
 
     /**
      * Generates a {@code PortScanReport} object from the provided list of port scan
-     * results along with additional scan metadata such as the invocation command
-     * and start/stop timestamps. This method processes the scan results to
-     * calculate the total number of open, filtered, and closed ports, as well
-     * as builds a mapping of hostnames to their corresponding open ports.
+     * results along with additional scan metadata such as the invocation command.
+     * This method processes the scan results to calculate the total number of open,
+     * filtered, and closed ports, as well as builds a mapping of hostnames to their
+     * corresponding open ports.
      *
      * @param results a list of {@code PortScanResult} objects representing
      *                the results of a port scan, including port states and
      *                associated host information
-     * @param command the {@code InvocationCommand} containing details about
-     *                the executed scan command
-     * @param start the start timestamp of the scan in milliseconds
-     * @param stop the stop timestamp of the scan in milliseconds
      * @return a {@link PortScanReport}
      */
-    private PortScanReport generatePortScanReportFromPortScanResults(List<PortScanResult> results, InvocationCommand command,
-                                                                     long start, long stop, long duration) {
+    protected PortScanReport generatePortScanReportFromPortScanResults(List<PortScanResult> results) {
         int openPortsCount = 0;
         int filteredPortsCount = 0;
         int closedPortsCount = 0;
@@ -524,11 +532,11 @@ public class PortScanner {
                 }
             }
         }
-        ScanSummary scanSummary = new ScanSummary(start,
+        ScanSummary scanSummary = new ScanSummary(0L,
                 null,
-                command,
-                stop,
-                duration,
+                invocationCommand,
+                0L,
+                sumSequentialDuration(results),
                 new AtomicInteger(openPortsCount),
                 new AtomicInteger(filteredPortsCount),
                 new AtomicInteger(closedPortsCount),
@@ -548,13 +556,18 @@ public class PortScanner {
      * identity details of the specified host
      */
     private HostIdentity getHostIdentity(String host) {
-        Inet4Address hostAddress = PortScannerUtil.getHostInet4Address(host);
-        String hostAddressName = PortScannerUtil.getHostInet4AddressName(hostAddress.getHostAddress());
-        return new HostIdentity.Builder()
-                .hostInet4Address(hostAddress)
-                .hostAddress(hostAddress.getHostAddress())
-                .hostname(hostAddressName)
-                .build();
+        if (ObjectUtils.isNotEmpty(host)) {
+            Inet4Address hostAddress = PortScannerUtil.getHostInet4Address(host);
+            String hostAddressName = PortScannerUtil.getHostInet4AddressName(hostAddress.getHostAddress());
+            if (ObjectUtils.isNotEmpty(hostAddress) && ObjectUtils.isNotEmpty(hostAddressName)) {
+                return new HostIdentity.Builder()
+                        .hostInet4Address(hostAddress)
+                        .hostAddress(hostAddress.getHostAddress())
+                        .hostname(hostAddressName)
+                        .build();
+            }
+        }
+        return null;
     }
 
     /**
