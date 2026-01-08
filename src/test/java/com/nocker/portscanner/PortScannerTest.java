@@ -8,7 +8,10 @@ import com.nocker.portscanner.report.PortScanReport;
 import com.nocker.portscanner.report.PortScanResult;
 import com.nocker.portscanner.scheduler.PortScanScheduler;
 import com.nocker.portscanner.scheduler.PortScanSchedulerFactory;
+import com.nocker.portscanner.scheduler.PortScanSynAckScheduler;
 import com.nocker.portscanner.tasks.PortRange;
+import com.nocker.portscanner.tasks.PortScanSynAckTask;
+import com.nocker.portscanner.wildcard.CidrWildcard;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -17,12 +20,14 @@ import org.mockito.internal.util.collections.Sets;
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.nocker.portscanner.PortScanner.MAX_SCHEDULERS;
 import static com.nocker.portscanner.PortState.CLOSED;
 import static com.nocker.portscanner.PortState.OPEN;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 class PortScannerTest {
     private static PortScannerContext BASIC_CXT;
@@ -42,6 +47,25 @@ class PortScannerTest {
                 .concurrency(100)
                 .schedulerFactory(BASIC_SCHEDULER_FACTORY)
                 .timeout(5).syn(false).robust(false).build();
+    }
+
+    @Test
+    void testCidrScanWithHostsWildcard() {
+        CidrWildcard cidrWildcard = new CidrWildcard("127.0.0.254/24");
+        PortScanner portScanner = new PortScanner(BASIC_CXT);
+        PortScanSynAckScheduler mockScheduler = Mockito.mock(PortScanSynAckScheduler.class);
+        PortScanReport mockPortScanReport = Mockito.mock(PortScanReport.class);
+        when(BASIC_SCHEDULER_FACTORY.create()).thenReturn(mockScheduler);
+        when(mockScheduler.shutdownAndCollect(any(AtomicInteger.class)))
+                .thenReturn(mockPortScanReport);
+
+        portScanner.cidrScan(cidrWildcard);
+        verify(mockScheduler, times(1)).shutdownAndCollect(any(AtomicInteger.class));
+        verify(mockScheduler).shutdownAndCollect(argThat(count -> count.get() > 0));
+        // the basic context is not sneaky
+        verify(mockScheduler, atLeast(1)).submit(isA(PortScanSynAckTask.class));
+        // this is not flagged with robust and sends a human-readable summary
+        verify(mockPortScanReport, times(1)).getSummary();
     }
 
     @Test

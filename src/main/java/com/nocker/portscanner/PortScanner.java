@@ -19,7 +19,7 @@ import com.nocker.portscanner.scheduler.PortScanSchedulerFactory;
 import com.nocker.portscanner.tasks.PortRange;
 import com.nocker.portscanner.tasks.PortScanSynAckTask;
 import com.nocker.portscanner.tasks.PortScanSynTask;
-import com.nocker.portscanner.wildcard.CIDRWildcard;
+import com.nocker.portscanner.wildcard.CidrWildcard;
 import com.nocker.portscanner.wildcard.PortWildcard;
 import com.nocker.writer.NockerFileWriter;
 import org.apache.commons.lang3.ObjectUtils;
@@ -315,7 +315,7 @@ public class PortScanner {
     // stupid slow, most likely coming from building the hostModels
     // scan logic complete
     @CIDRScan
-    public void cidrScan(@Hosts CIDRWildcard hosts) {
+    public void cidrScan(@Hosts CidrWildcard hosts) {
         if (hosts.isValidCIDRWildcard()) {
             if (hosts.getOctets()[3] == 0) {
                 hosts.incrementLastOctet();

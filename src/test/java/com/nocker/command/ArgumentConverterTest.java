@@ -1,6 +1,6 @@
 package com.nocker.command;
 
-import com.nocker.portscanner.wildcard.CIDRWildcard;
+import com.nocker.portscanner.wildcard.CidrWildcard;
 import com.nocker.portscanner.wildcard.PortWildcard;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -31,7 +31,7 @@ class ArgumentConverterTest {
     void convertToObjectArrayThrowsIllegalArgumentExceptionKeySizeMismatch() {
         LinkedHashMap<String, Class> parameters = new LinkedHashMap<>();
         parameters.put("host", String.class);
-        parameters.put("port", CIDRWildcard.class);
+        parameters.put("port", CidrWildcard.class);
         parameters.put("server", Inet4Address.class);
 
         LinkedHashMap<String, String> arguments = new LinkedHashMap<>();

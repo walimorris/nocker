@@ -2,7 +2,7 @@ package com.nocker.portscanner.wildcard;
 
 import static com.nocker.portscanner.PortScannerUtil.*;
 
-public class CIDRWildcard {
+public class CidrWildcard {
     private final String value;
     private String address;
     private final String cidr;
@@ -10,7 +10,7 @@ public class CIDRWildcard {
 
     private static final String ALLOWED_CIDR = "/24";
 
-    public CIDRWildcard(String value) {
+    public CidrWildcard(String value) {
         this.value = value;
         if (!value.contains("/")) {
             throw new IllegalArgumentException("Missing CIDR suffix: " + value);

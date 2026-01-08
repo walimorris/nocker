@@ -1,6 +1,6 @@
 package com.nocker.command;
 
-import com.nocker.portscanner.wildcard.CIDRWildcard;
+import com.nocker.portscanner.wildcard.CidrWildcard;
 import com.nocker.portscanner.wildcard.PortWildcard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +18,7 @@ public final class ArgumentConverter {
             int.class,
             Integer.class,
             List.class,
-            CIDRWildcard.class,
+            CidrWildcard.class,
             PortWildcard.class
     };
 
@@ -99,7 +99,7 @@ public final class ArgumentConverter {
                 return List.class;
             }
             if (isValidCIDRWildcard(value)) {
-                return CIDRWildcard.class;
+                return CidrWildcard.class;
             }
             if (isValidPortWildcard(value)) {
                 return PortWildcard.class;
@@ -120,8 +120,8 @@ public final class ArgumentConverter {
                 return Arrays.asList(value.split(","));
             }
         }
-        if (type == CIDRWildcard.class) {
-            return new CIDRWildcard(value);
+        if (type == CidrWildcard.class) {
+            return new CidrWildcard(value);
         }
         if (type == PortWildcard.class) {
             return new PortWildcard(value);
@@ -136,7 +136,7 @@ public final class ArgumentConverter {
 
     private static boolean isValidCIDRWildcard(String value) {
         try {
-            new CIDRWildcard(value);
+            new CidrWildcard(value);
         } catch (IllegalArgumentException e) {
             return false;
         }
