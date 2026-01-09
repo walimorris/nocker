@@ -52,26 +52,26 @@ public class PortScanSynAckScheduler implements PortScanScheduler {
         List<PortScanResult> results = new ArrayList<>();
         ScanSummary scanSummary = new ScanSummary(startNanos.get(), schedulerId, invocationCommand);
         try {
-            int i = 0;
-            while (i < taskCount.get()) {
-                Future<List<PortScanResult>> future = completionService.take();
-                List<PortScanResult> tasksResults = future.get();
-                if (tasksResults != null) {
-                    for (PortScanResult result : tasksResults) {
-                        scanSummary.update(result);
-                        results.add(result);
+            for (int i = 0; i < taskCount.get(); i++) {
+                Future<List<PortScanResult>> future = completionService.
+                        poll(100, TimeUnit.MILLISECONDS);
+                if (future != null) {
+                    List<PortScanResult> tasksResults = future.get();
+                    if (tasksResults != null) {
+                        for (PortScanResult result : tasksResults) {
+                            scanSummary.update(result);
+                            results.add(result);
+                        }
                     }
                 }
-                i++;
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (ExecutionException e) {
             // log something useful
         } finally {
-            executorService.shutdown();
+            executorService.shutdownNow();
         }
-        // can remove once summary is integrated into scanner
         stopNanos.set(System.nanoTime());
         scanSummary.stop();
         return new PortScanReport(this, results, scanSummary);

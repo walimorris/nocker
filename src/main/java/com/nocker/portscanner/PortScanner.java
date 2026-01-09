@@ -47,6 +47,7 @@ public class PortScanner {
     private final PortScanSchedulerFactory schedulerFactory;
     private final boolean sneak;
     private final boolean robust;
+    private PortScanReport report;
 
     /**
      * Minimum valid port number that can be scanned.
@@ -168,7 +169,7 @@ public class PortScanner {
     public void scanSingleHostAndSinglePort(@Host String host, @Port int port) {
         HostIdentity hostIdentity = getHostIdentity(host);
         if (hostIdentity != null) {
-            PortScanReport report = singleHostAndSinglePortScan(hostIdentity, port);
+            report = singleHostAndSinglePortScan(hostIdentity, port);
             if (report != null) {
                 triggerResponse(report, hostIdentity);
             }
@@ -233,7 +234,7 @@ public class PortScanner {
         HostIdentity hostIdentity = getHostIdentity(host);
         PortScanScheduler scanScheduler = schedulerFactory.create();
         if (hostIdentity != null) {
-            PortScanReport report = singleHostScan(hostIdentity, scanScheduler);
+            report = singleHostScan(hostIdentity, scanScheduler);
             if (report != null) {
                 triggerResponse(report, hostIdentity);
             }
@@ -269,7 +270,7 @@ public class PortScanner {
             // local scans of ports less than MIN PORTS CURRENCY USAGE
             if (PortScannerUtil.isLocalHost(hostIdentity.getHostname()) && ports.size() < MIN_PORTS_CONCURRENCY_USAGE) {
                 List<PortScanResult> results = submitTask(hostIdentity.getHostInet4Address(), validPorts);
-                PortScanReport report = generatePortScanReportFromPortScanResults(results);
+                report = generatePortScanReportFromPortScanResults(results);
                 triggerResponse(report, hostIdentity);
             } else {
                 AtomicInteger taskCount = new AtomicInteger(0);
@@ -278,7 +279,7 @@ public class PortScanner {
                 List<PortRange> chunks = getChunks(sortedPorts.get(0), sortedPorts.get(sortedPorts.size() - 1), batchSize);
                 PortScanScheduler scanScheduler = schedulerFactory.create();
                 fireInTheHole(scanScheduler, hostIdentity.getHostInet4Address(), chunks, taskCount);
-                PortScanReport report = scanScheduler.shutdownAndCollect(taskCount);
+                report = scanScheduler.shutdownAndCollect(taskCount);
                 triggerResponse(report, hostIdentity);
             }
         }
@@ -299,7 +300,7 @@ public class PortScanner {
             List<PortRange> chunks = getChunks(ports.getLowPort(), ports.getHighPort(), batchSize);
             PortScanScheduler scanScheduler = schedulerFactory.create();
             fireInTheHole(scanScheduler, hostIdentity.getHostInet4Address(), chunks, taskCount);
-            PortScanReport report = scanScheduler.shutdownAndCollect(taskCount);
+            report = scanScheduler.shutdownAndCollect(taskCount);
             triggerResponse(report, hostIdentity);
         } else {
             PortScannerUtil.logInvalidHost(host);
@@ -333,7 +334,7 @@ public class PortScanner {
                 }
                 hosts.incrementLastOctet();
             }
-            PortScanReport report = scanScheduler.shutdownAndCollect(taskCount);
+            report = scanScheduler.shutdownAndCollect(taskCount);
             List<HostModel> hostModels = collectHostModels(scanScheduler, report.getResults());
             triggerResponse(report, hostModels);
         }
@@ -354,6 +355,8 @@ public class PortScanner {
     public int getTimeout() {
         return timeout;
     }
+
+    public PortScanReport getReport() { return report; }
 
     private void fireInTheHole(PortScanScheduler scanScheduler, Inet4Address hostAddress, List<PortRange> chunks, AtomicInteger taskCount) {
         for (PortRange portRange : chunks) {
