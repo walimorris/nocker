@@ -558,7 +558,7 @@ public class PortScanner {
      * @return a {@link HostIdentity} instance containing the resolved
      * identity details of the specified host
      */
-    private HostIdentity getHostIdentity(String host) {
+    protected HostIdentity getHostIdentity(String host) {
         if (ObjectUtils.isNotEmpty(host)) {
             Inet4Address hostAddress = PortScannerUtil.getHostInet4Address(host);
             String hostAddressName = PortScannerUtil.getHostInet4AddressName(hostAddress.getHostAddress());

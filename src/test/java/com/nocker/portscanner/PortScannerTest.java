@@ -11,7 +11,9 @@ import com.nocker.portscanner.scheduler.PortScanSchedulerFactory;
 import com.nocker.portscanner.scheduler.PortScanSynAckScheduler;
 import com.nocker.portscanner.tasks.PortRange;
 import com.nocker.portscanner.tasks.PortScanSynAckTask;
+import com.nocker.portscanner.tasks.PortScanSynTask;
 import com.nocker.portscanner.wildcard.CidrWildcard;
+import com.nocker.portscanner.wildcard.PortWildcard;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -30,7 +32,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class PortScannerTest {
-    private static PortScannerContext BASIC_CXT;
+    private static PortScannerContext BASIC_SYN_ACK_CXT;
+    private static PortScannerContext BASIC_SYN_CXT;
+    
     private static InvocationCommand BASIC_INVOCATION_COMMAND;
     private static OutputFormatter BASIC_OUTPUT_FORMATTER;
     private static PortScanSchedulerFactory BASIC_SCHEDULER_FACTORY;
@@ -41,18 +45,42 @@ class PortScannerTest {
         BASIC_OUTPUT_FORMATTER = Mockito.mock(OutputFormatter.class);
         BASIC_SCHEDULER_FACTORY = Mockito.mock(PortScanSchedulerFactory.class);
 
-        BASIC_CXT = new PortScannerContext.Builder()
+        BASIC_SYN_ACK_CXT = new PortScannerContext.Builder()
                 .invocationCommand(BASIC_INVOCATION_COMMAND)
                 .nockerFileWriter(null).outputFormatter(BASIC_OUTPUT_FORMATTER)
                 .concurrency(100)
                 .schedulerFactory(BASIC_SCHEDULER_FACTORY)
                 .timeout(5).syn(false).robust(false).build();
+
+        BASIC_SYN_CXT = new PortScannerContext.Builder()
+                .invocationCommand(BASIC_INVOCATION_COMMAND)
+                .nockerFileWriter(null).outputFormatter(BASIC_OUTPUT_FORMATTER)
+                .concurrency(100)
+                .schedulerFactory(BASIC_SCHEDULER_FACTORY)
+                .timeout(5).syn(true).robust(false).build();
+    }
+
+    @Test
+    void testScanWithSingleHostAndPortWildcardSynModeOn() {
+        PortScanner portScanner = new PortScanner(BASIC_SYN_CXT);
+        PortScanSynAckScheduler mockScheduler = Mockito.mock(PortScanSynAckScheduler.class);
+        PortScanReport mockPortScanReport = Mockito.mock(PortScanReport.class);
+
+        when(BASIC_SCHEDULER_FACTORY.create()).thenReturn(mockScheduler);
+        when(mockScheduler.shutdownAndCollect(any(AtomicInteger.class))).thenReturn(mockPortScanReport);
+
+        portScanner.scan("127.0.0.1", new PortWildcard("8080-8090"));
+
+        verify(mockScheduler, times(1)).shutdownAndCollect(any(AtomicInteger.class));
+        // sneaky mode on
+        verify(mockScheduler, atLeast(1)).submit(isA(PortScanSynTask.class));
+        verify(mockPortScanReport, times(1)).getSummary();
     }
 
     @Test
     void testCidrScanWithHostsWildcard() {
         CidrWildcard cidrWildcard = new CidrWildcard("127.0.0.254/24");
-        PortScanner portScanner = new PortScanner(BASIC_CXT);
+        PortScanner portScanner = new PortScanner(BASIC_SYN_ACK_CXT);
         PortScanSynAckScheduler mockScheduler = Mockito.mock(PortScanSynAckScheduler.class);
         PortScanReport mockPortScanReport = Mockito.mock(PortScanReport.class);
         when(BASIC_SCHEDULER_FACTORY.create()).thenReturn(mockScheduler);
@@ -70,7 +98,7 @@ class PortScannerTest {
 
     @Test
     void testGeneratePortScanReportFromPortScanResults() throws UnknownHostException {
-        PortScanner portScanner = new PortScanner(BASIC_CXT);
+        PortScanner portScanner = new PortScanner(BASIC_SYN_ACK_CXT);
         UUID taskId = UUID.randomUUID();
         Inet4Address address = (Inet4Address) Inet4Address.getLocalHost();
         PortScanResult result1 = new PortScanResult(null, taskId, address, 8080, OPEN, 1);
@@ -103,14 +131,14 @@ class PortScannerTest {
 
     @Test
     void testSpawnSchedulersReturnsRequestedSize() {
-        PortScanner portScanner = new PortScanner(BASIC_CXT);
+        PortScanner portScanner = new PortScanner(BASIC_SYN_ACK_CXT);
         List<PortScanScheduler> schedulers = portScanner.spawnSchedulers(3);
         assertEquals(3, schedulers.size());
     }
 
     @Test
     void testSpawnSchedulersReturnsMaxSchedulersSizeAndNotRequestedSize() {
-        PortScanner portScanner = new PortScanner(BASIC_CXT);
+        PortScanner portScanner = new PortScanner(BASIC_SYN_ACK_CXT);
         int requestedSize = MAX_SCHEDULERS + 25;
         List<PortScanScheduler> schedulers = portScanner.spawnSchedulers(requestedSize);
         assertNotEquals(requestedSize, schedulers.size());
@@ -119,7 +147,7 @@ class PortScannerTest {
 
     @Test
     void testSumSequentialDuration() throws UnknownHostException {
-        PortScanner portScanner = new PortScanner(BASIC_CXT);
+        PortScanner portScanner = new PortScanner(BASIC_SYN_ACK_CXT);
         Inet4Address address = (Inet4Address) Inet4Address.getLocalHost();
         List<PortScanResult> results = Arrays.asList(
                 new PortScanResult(null, null, address, 8080, CLOSED, 1),
@@ -133,7 +161,7 @@ class PortScannerTest {
 
     @Test
     void testGetChunksValidScenario() {
-        PortScanner portScanner = new PortScanner(BASIC_CXT);
+        PortScanner portScanner = new PortScanner(BASIC_SYN_ACK_CXT);
 
         int startPort = 1;
         int endPort = 100;
@@ -151,7 +179,7 @@ class PortScannerTest {
 
     @Test
     void testGetChunksValidScenarioSinglePortScan() {
-        PortScanner portScanner = new PortScanner(BASIC_CXT);
+        PortScanner portScanner = new PortScanner(BASIC_SYN_ACK_CXT);
 
         int startPort = 4331;
         int endPort = 4332;
@@ -165,7 +193,7 @@ class PortScannerTest {
 
     @Test
     void testGetChunksSingleBatch() {
-        PortScanner portScanner = new PortScanner(BASIC_CXT);
+        PortScanner portScanner = new PortScanner(BASIC_SYN_ACK_CXT);
 
         int startPort = 1;
         int endPort = 50;
@@ -179,7 +207,7 @@ class PortScannerTest {
 
     @Test
     void testGetChunksRemainingPorts() {
-        PortScanner portScanner = new PortScanner(BASIC_CXT);
+        PortScanner portScanner = new PortScanner(BASIC_SYN_ACK_CXT);
 
         int startPort = 1;
         int endPort = 55;
@@ -195,7 +223,7 @@ class PortScannerTest {
 
     @Test
     void testGetChunksInvalidRange() {
-        PortScanner portScanner = new PortScanner(BASIC_CXT);
+        PortScanner portScanner = new PortScanner(BASIC_SYN_ACK_CXT);
 
         int startPort = 100;
         int endPort = 50;
