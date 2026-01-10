@@ -1,12 +1,15 @@
 package com.nocker.portscanner.model;
 
 import java.net.Inet4Address;
+import java.util.Objects;
 
 /**
  * Represents the identity details of a host, including its IPv4 address,
  * host address, and hostname. This class is immutable and provides
  * access to the host's identity attributes via getter methods.
  * It is primarily constructed using the static {@link Builder} class.
+ *
+ * @author Wali Morris
  */
 public class HostIdentity {
     private final Inet4Address hostInet4Address;
@@ -14,9 +17,9 @@ public class HostIdentity {
     private final String hostname;
 
     public HostIdentity(Inet4Address hostInet4Address, String hostAddress, String hostname) {
-        this.hostInet4Address = hostInet4Address;
-        this.hostAddress = hostAddress;
-        this.hostname = hostname;
+        this.hostInet4Address = Objects.requireNonNull(hostInet4Address, "hostInet4Address cannot be null.");
+        this.hostAddress = Objects.requireNonNull(hostAddress, "hostAddress cannot be null.");
+        this.hostname = Objects.requireNonNull(hostname, "hostname cannot be null.");
     }
 
     HostIdentity(Builder builder) {
@@ -74,6 +77,9 @@ public class HostIdentity {
         }
 
         public HostIdentity build() {
+            Objects.requireNonNull(this.hostInet4Address, "HostIdentity hostInet4Address cannot be null");
+            Objects.requireNonNull(this.hostAddress, "HostIdentity hostAddress cannot be null");
+            Objects.requireNonNull(this.hostname, "HostIdentity hostname cannot be null");
             return new HostIdentity(this);
         }
     }
