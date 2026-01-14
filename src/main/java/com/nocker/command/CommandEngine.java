@@ -17,8 +17,8 @@ public final class CommandEngine {
 
     // retrieve the method
     public static InvocationCommand retrieve(CommandLineInput cl) {
-        if (cl.getCommand() == null) {
-            return null; // should throw here or output some useful info
+        if (cl.getCommand() == null || cl.getCommandMethod() == null || cl.getArguments() == null) {
+            throw new IllegalStateException("CommandLineInput cannot be null.");
         }
         LinkedHashMap<String, Class> currentParameters = MethodResolver
                 .getNockerParameterNamesAndTypes(cl.getCommandMethod().getMethod());
