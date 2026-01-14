@@ -3,6 +3,7 @@ package com.nocker.portscanner;
 import com.nocker.cli.PortScannerContext;
 import com.nocker.cli.formatter.OutputFormatter;
 import com.nocker.portscanner.command.CommandLineInput;
+import com.nocker.portscanner.command.CommandMethod;
 import com.nocker.portscanner.command.InvocationCommand;
 import com.nocker.portscanner.report.PortScanReport;
 import com.nocker.portscanner.report.PortScanResult;
@@ -14,11 +15,13 @@ import com.nocker.portscanner.tasks.PortScanSynAckTask;
 import com.nocker.portscanner.tasks.PortScanSynTask;
 import com.nocker.portscanner.wildcard.CidrWildcard;
 import com.nocker.portscanner.wildcard.PortWildcard;
+import com.nocker.writer.NockerFileWriter;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.mockito.internal.util.collections.Sets;
 
+import java.lang.reflect.Method;
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
 import java.util.*;
@@ -38,26 +41,74 @@ class PortScannerTest {
     private static InvocationCommand BASIC_INVOCATION_COMMAND;
     private static OutputFormatter BASIC_OUTPUT_FORMATTER;
     private static PortScanSchedulerFactory BASIC_SCHEDULER_FACTORY;
+    private static NockerFileWriter BASIC_NOCKER_FILE_WRITER;
 
     @BeforeAll
     static void setup() {
         BASIC_INVOCATION_COMMAND = Mockito.mock(InvocationCommand.class);
         BASIC_OUTPUT_FORMATTER = Mockito.mock(OutputFormatter.class);
         BASIC_SCHEDULER_FACTORY = Mockito.mock(PortScanSchedulerFactory.class);
+        BASIC_NOCKER_FILE_WRITER = Mockito.mock(NockerFileWriter.class);
 
         BASIC_SYN_ACK_CXT = new PortScannerContext.Builder()
                 .invocationCommand(BASIC_INVOCATION_COMMAND)
-                .nockerFileWriter(null).outputFormatter(BASIC_OUTPUT_FORMATTER)
+                .nockerFileWriter(BASIC_NOCKER_FILE_WRITER).outputFormatter(BASIC_OUTPUT_FORMATTER)
                 .concurrency(100)
                 .schedulerFactory(BASIC_SCHEDULER_FACTORY)
                 .timeout(5).syn(false).robust(false).build();
 
         BASIC_SYN_CXT = new PortScannerContext.Builder()
                 .invocationCommand(BASIC_INVOCATION_COMMAND)
-                .nockerFileWriter(null).outputFormatter(BASIC_OUTPUT_FORMATTER)
+                .nockerFileWriter(BASIC_NOCKER_FILE_WRITER).outputFormatter(BASIC_OUTPUT_FORMATTER)
                 .concurrency(100)
                 .schedulerFactory(BASIC_SCHEDULER_FACTORY)
                 .timeout(5).syn(true).robust(false).build();
+    }
+
+    @Test
+    void testGetNockerFileWriter() {
+        // writing is not intended so we reuse the mock
+        PortScanner portScanner = new PortScanner(BASIC_SYN_ACK_CXT);
+        assertEquals(BASIC_NOCKER_FILE_WRITER, portScanner.getFileWriter());
+    }
+
+    @Test
+    void testGetConcurrency() {
+        PortScanner portScanner = new PortScanner(BASIC_SYN_ACK_CXT);
+        assertEquals(100, portScanner.getConcurrency());
+    }
+
+    @Test
+    void testGetTimeout() {
+        PortScanner portScanner = new PortScanner(BASIC_SYN_ACK_CXT);
+        assertEquals(5, portScanner.getTimeout());
+    }
+
+    @Test
+    void testGetInvocationCommand() throws NoSuchMethodException {
+        String basicScanCommand = "nocker scan --host=127.0.0.1 --port=8080";
+        String basicScanMethodName = "scanSingleHostAndSinglePort";
+        Method basicScanMethod = PortScanner.class.getDeclaredMethod(basicScanMethodName, String.class, int.class);
+        Object[] basicScanObjectArgs = new Object[]{"127.0.0.1", "8080"};
+        LinkedHashMap<String, String> basicScanArgs = new LinkedHashMap<String, String>() {{
+            put("host", "127.0.0.1");
+            put("port", "8080");
+        }};
+
+        CommandMethod method = new CommandMethod("scan", basicScanMethodName, basicScanMethod);
+        CommandLineInput input = new CommandLineInput(basicScanCommand, method, basicScanArgs, null);
+        PortScannerContext cxt = new PortScannerContext.Builder()
+                .invocationCommand(new InvocationCommand(input, basicScanMethod, basicScanObjectArgs))
+                .nockerFileWriter(null).outputFormatter(BASIC_OUTPUT_FORMATTER)
+                .concurrency(100)
+                .schedulerFactory(BASIC_SCHEDULER_FACTORY)
+                .timeout(5).syn(false).robust(false).build();
+
+        PortScanner portScanner = new PortScanner(cxt);
+
+        assertEquals(basicScanCommand, portScanner.getInvocationCommand().getCommandLineInput().getCommand());
+        assertEquals(basicScanMethod, portScanner.getInvocationCommand().getMethod());
+        assertEquals(method.getCanonicalMethodName(), portScanner.getInvocationCommand().getMethod().getName());
     }
 
     @Test

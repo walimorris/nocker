@@ -25,10 +25,11 @@ public class InvocationCommand {
         return args;
     }
 
+    // TODO: finish toString, add the input details
     @Override
     public String toString() {
         return "InvocationCommand{" +
-                "commandLineInput=" + commandLineInput +
+                "commandLineInput=" + commandLineInput.getCommand() +
                 ", method=" + method +
                 ", args=" + (args != null ? java.util.Arrays.toString(args) : "null") +
                 '}';
