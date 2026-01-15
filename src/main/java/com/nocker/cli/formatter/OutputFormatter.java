@@ -24,6 +24,15 @@ public interface OutputFormatter {
     void write(Object obj, PrintStream out);
 
     /**
+     * Writes the provided object to the specified {@link Appendable}.
+     *
+     * @param obj the object to be written
+     * @param appendable the {@link Appendable} where the object
+     *                   will be written
+     */
+    void write(Object obj, Appendable appendable);
+
+    /**
      * Writes the provided {@link ScanSummary} to the specified output
      * stream.
      *
@@ -35,6 +44,18 @@ public interface OutputFormatter {
      *                    written
      */
     void write(ScanSummary scanSummary, PrintStream out);
+
+    /**
+     * Writes the provided {@link ScanSummary} to the specified {@link Appendable}.
+     *
+     * @param scanSummary the summary of the scanning process to be written,
+     *                    containing details such as the number of open,
+     *                    closed, and filtered ports, total ports scanned,
+     *                    scan duration, and open ports per host
+     * @param appendable  the {@link Appendable} where the scan summary will
+     *                    be written
+     */
+    void write(ScanSummary scanSummary, Appendable appendable);
 
     /**
      * Writes the provided string content to the specified output stream.

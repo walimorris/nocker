@@ -4,7 +4,7 @@ import com.nocker.cli.PortScannerContext;
 import com.nocker.cli.formatter.OutputFormatter;
 import com.nocker.portscanner.command.CommandLineInput;
 import com.nocker.portscanner.command.CommandMethod;
-import com.nocker.portscanner.command.InvocationCommand;
+import com.nocker.portscanner.command.InvocationRequest;
 import com.nocker.portscanner.report.PortScanReport;
 import com.nocker.portscanner.report.PortScanResult;
 import com.nocker.portscanner.scheduler.PortScanScheduler;
@@ -38,14 +38,14 @@ class PortScannerTest {
     private static PortScannerContext BASIC_SYN_ACK_CXT;
     private static PortScannerContext BASIC_SYN_CXT;
     
-    private static InvocationCommand BASIC_INVOCATION_COMMAND;
+    private static InvocationRequest BASIC_INVOCATION_COMMAND;
     private static OutputFormatter BASIC_OUTPUT_FORMATTER;
     private static PortScanSchedulerFactory BASIC_SCHEDULER_FACTORY;
     private static NockerFileWriter BASIC_NOCKER_FILE_WRITER;
 
     @BeforeAll
     static void setup() {
-        BASIC_INVOCATION_COMMAND = Mockito.mock(InvocationCommand.class);
+        BASIC_INVOCATION_COMMAND = Mockito.mock(InvocationRequest.class);
         BASIC_OUTPUT_FORMATTER = Mockito.mock(OutputFormatter.class);
         BASIC_SCHEDULER_FACTORY = Mockito.mock(PortScanSchedulerFactory.class);
         BASIC_NOCKER_FILE_WRITER = Mockito.mock(NockerFileWriter.class);
@@ -98,7 +98,7 @@ class PortScannerTest {
         CommandMethod method = new CommandMethod("scan", basicScanMethodName, basicScanMethod);
         CommandLineInput input = new CommandLineInput(basicScanCommand, method, basicScanArgs, null);
         PortScannerContext cxt = new PortScannerContext.Builder()
-                .invocationCommand(new InvocationCommand(input, basicScanMethod, basicScanObjectArgs))
+                .invocationCommand(new InvocationRequest(input, basicScanMethod, basicScanObjectArgs))
                 .nockerFileWriter(null).outputFormatter(BASIC_OUTPUT_FORMATTER)
                 .concurrency(100)
                 .schedulerFactory(BASIC_SCHEDULER_FACTORY)
@@ -120,7 +120,7 @@ class PortScannerTest {
         when(BASIC_SCHEDULER_FACTORY.create()).thenReturn(mockScheduler);
         when(mockScheduler.shutdownAndCollect(any(AtomicInteger.class))).thenReturn(mockPortScanReport);
 
-        portScanner.scan("127.0.0.1", new PortWildcard("8080-8090"));
+        String output = portScanner.scan("127.0.0.1", new PortWildcard("8080-8090"));
 
         verify(mockScheduler, times(1)).shutdownAndCollect(any(AtomicInteger.class));
         // sneaky mode on

@@ -5,7 +5,7 @@ import com.nocker.cli.formatter.OutputFormatter;
 import com.nocker.portscanner.annotation.arguments.Host;
 import com.nocker.portscanner.annotation.arguments.Hosts;
 import com.nocker.portscanner.annotation.arguments.Port;
-import com.nocker.portscanner.command.InvocationCommand;
+import com.nocker.portscanner.command.InvocationRequest;
 import com.nocker.portscanner.annotation.arguments.Ports;
 import com.nocker.portscanner.annotation.commands.CIDRScan;
 import com.nocker.portscanner.annotation.commands.Scan;
@@ -41,7 +41,7 @@ public class PortScanner {
 
     private final int timeout;
     private final int concurrency;
-    private final InvocationCommand invocationCommand;
+    private final InvocationRequest invocationRequest;
     private final NockerFileWriter fileWriter;
     private final OutputFormatter outputFormatter;
     private final PortScanSchedulerFactory schedulerFactory;
@@ -137,7 +137,7 @@ public class PortScanner {
     public static final int CHUNK_PORTS_REMOTE_MAX = 6000;
 
     public PortScanner(PortScannerContext cxt) {
-        this.invocationCommand = Objects.requireNonNull(cxt.getInvocationCommand(), "invocation command must be set");
+        this.invocationRequest = Objects.requireNonNull(cxt.getInvocationCommand(), "invocation command must be set");
         this.fileWriter = cxt.getNockerFileWriter();
         this.outputFormatter = Objects.requireNonNull(cxt.getOutputFormatter(), "formatter must be set");
         this.schedulerFactory = Objects.requireNonNull(cxt.getSchedulerFactory(), "scheduler factory must be set");
@@ -148,7 +148,7 @@ public class PortScanner {
     }
 
     @Scan
-    public void scan(@Hosts List<String> hosts, @Port int port) {
+    public String scan(@Hosts List<String> hosts, @Port int port) {
         Map<PortScanReport, HostIdentity> reports = new LinkedHashMap<>();
         for (String host : hosts) {
             HostIdentity hostIdentity = getHostIdentity(host);
@@ -159,22 +159,24 @@ public class PortScanner {
                 }
             }
         }
+        StringBuilder builder = new StringBuilder();
         for (Map.Entry<PortScanReport, HostIdentity> entry : reports.entrySet()) {
-            triggerResponse(entry.getKey(), entry.getValue());
+            builder.append(triggerResponse(entry.getKey(), entry.getValue())).append("\n");
         }
+        return builder.toString();
     }
 
     @Scan
     // scan complete
-    public void scanSingleHostAndSinglePort(@Host String host, @Port int port) {
+    public String scanSingleHostAndSinglePort(@Host String host, @Port int port) {
         HostIdentity hostIdentity = getHostIdentity(host);
         if (hostIdentity != null) {
             report = singleHostAndSinglePortScan(hostIdentity, port);
             if (report != null) {
-                triggerResponse(report, hostIdentity);
+                return triggerResponse(report, hostIdentity);
             }
         }
-        // notify client otherwise
+        return "null";
     }
 
     private PortScanReport singleHostAndSinglePortScan(HostIdentity hostIdentity, int port) {
@@ -214,7 +216,7 @@ public class PortScanner {
      * @param hosts
      */
     @Scan
-    public void scan(@Hosts List<String> hosts) {
+    public String scan(@Hosts List<String> hosts) {
         List<PortScanScheduler> schedulers = spawnSchedulers(hosts.size());
         Map<PortScanReport, HostIdentity> reports = new LinkedHashMap<>();
         for (int i = 0; i < hosts.size(); i++) {
@@ -222,24 +224,26 @@ public class PortScanner {
             PortScanScheduler scheduler = schedulers.get(i % schedulers.size());
             reports.put(singleHostScan(hostIdentity, scheduler), hostIdentity);
         }
+        StringBuilder builder = new StringBuilder();
         for (Map.Entry<PortScanReport, HostIdentity> entry : reports.entrySet()) {
-            triggerResponse(entry.getKey(), entry.getValue());
+            builder.append(triggerResponse(entry.getKey(), entry.getValue())).append("\n");
         }
+        return builder.toString();
     }
 
     // BEWARE: this scans all valid ports on a single host
     // scan complete
     @Scan
-    public void scan(@Host String host) {
+    public String scan(@Host String host) {
         HostIdentity hostIdentity = getHostIdentity(host);
         PortScanScheduler scanScheduler = schedulerFactory.create();
         if (hostIdentity != null) {
             report = singleHostScan(hostIdentity, scanScheduler);
             if (report != null) {
-                triggerResponse(report, hostIdentity);
+                return triggerResponse(report, hostIdentity);
             }
         }
-        // notify client otherwise
+        return "null";
     }
 
     private PortScanReport singleHostScan(HostIdentity hostIdentity, PortScanScheduler scheduler) {
@@ -258,12 +262,12 @@ public class PortScanner {
     // allows range scan: nocker scan host=localhost ports=8080,8081,8082,8083,8084
     // scan logic complete
     @Scan
-    public void scan(@Host String host, @Ports List<String> ports) {
+    public String scan(@Host String host, @Ports List<String> ports) {
         HostIdentity hostIdentity = getHostIdentity(host);
         if (hostIdentity == null) {
             // notify
             LOGGER.warn("Cannot scan nonexistent host: {}", host);
-            return;
+            return "null";
         }
         List<Integer> validPorts = PortScannerUtil.convertListOfPortStringsToIntegers(ports);
         if (ObjectUtils.isNotEmpty(hostIdentity.getHostInet4Address()) && ObjectUtils.isNotEmpty(validPorts)) {
@@ -271,7 +275,7 @@ public class PortScanner {
             if (PortScannerUtil.isLocalHost(hostIdentity.getHostname()) && ports.size() < MIN_PORTS_CONCURRENCY_USAGE) {
                 List<PortScanResult> results = submitTask(hostIdentity.getHostInet4Address(), validPorts);
                 report = generatePortScanReportFromPortScanResults(results);
-                triggerResponse(report, hostIdentity);
+                return triggerResponse(report, hostIdentity);
             } else {
                 AtomicInteger taskCount = new AtomicInteger(0);
                 int batchSize = getBatchSize(hostIdentity.getHostInet4Address());
@@ -280,19 +284,20 @@ public class PortScanner {
                 PortScanScheduler scanScheduler = schedulerFactory.create();
                 fireInTheHole(scanScheduler, hostIdentity.getHostInet4Address(), chunks, taskCount);
                 report = scanScheduler.shutdownAndCollect(taskCount);
-                triggerResponse(report, hostIdentity);
+                return triggerResponse(report, hostIdentity);
             }
         }
+        return "null";
     }
 
     // scan logic complete
     @Scan
-    public void scan(@Host String host, @Ports PortWildcard ports) {
+    public String scan(@Host String host, @Ports PortWildcard ports) {
         HostIdentity hostIdentity = getHostIdentity(host);
         if (hostIdentity == null) {
             // notify
             LOGGER.warn("Cannot scan nonexistent host: {}", host);
-            return;
+            return "null";
         }
         if (ObjectUtils.isNotEmpty(hostIdentity.getHostInet4Address())) {
             int batchSize = getBatchSize(hostIdentity.getHostInet4Address());
@@ -301,9 +306,10 @@ public class PortScanner {
             PortScanScheduler scanScheduler = schedulerFactory.create();
             fireInTheHole(scanScheduler, hostIdentity.getHostInet4Address(), chunks, taskCount);
             report = scanScheduler.shutdownAndCollect(taskCount);
-            triggerResponse(report, hostIdentity);
+            return triggerResponse(report, hostIdentity);
         } else {
             PortScannerUtil.logInvalidHost(host);
+            return "null";
         }
     }
 
@@ -340,8 +346,8 @@ public class PortScanner {
         }
     }
 
-    public InvocationCommand getInvocationCommand() {
-        return invocationCommand;
+    public InvocationRequest getInvocationCommand() {
+        return invocationRequest;
     }
 
     public NockerFileWriter getFileWriter() {
@@ -431,12 +437,12 @@ public class PortScanner {
         }
     }
 
-    private void triggerResponse(PortScanReport report, HostIdentity hostIdentity) {
+    private String triggerResponse(PortScanReport report, HostIdentity hostIdentity) {
         if (robust) {
             HostModel hostModel = responseWithHostModel(report.getPortScanScheduler(), report.getResults(), hostIdentity);
-            doShowOutput(hostModel);
+            return doGetOutput(hostModel);
         } else {
-            doShowOutput(report.getSummary());
+            return doGetOutput(report.getSummary());
         }
     }
 
@@ -502,6 +508,20 @@ public class PortScanner {
         writeToFile(scanSummary);
     }
 
+    private String doGetOutput(Object obj) {
+        StringBuilder stringBuilder = new StringBuilder();
+        outputFormatter.write(obj, stringBuilder);
+        writeToFile(obj);
+        return stringBuilder.toString();
+    }
+
+    private String doGetOutput(ScanSummary scanSummary) {
+        StringBuilder stringBuilder = new StringBuilder();
+        outputFormatter.write(scanSummary, stringBuilder);
+        writeToFile(scanSummary);
+        return stringBuilder.toString();
+    }
+
     /**
      * Generates a {@code PortScanReport} object from the provided list of port scan
      * results along with additional scan metadata such as the invocation command.
@@ -537,7 +557,7 @@ public class PortScanner {
         }
         ScanSummary scanSummary = new ScanSummary(0L,
                 null,
-                invocationCommand,
+                invocationRequest,
                 0L,
                 sumSequentialDuration(results),
                 new AtomicInteger(openPortsCount),

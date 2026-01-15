@@ -2,12 +2,12 @@ package com.nocker.portscanner.command;
 
 import java.lang.reflect.Method;
 
-public class InvocationCommand {
+public class InvocationRequest {
     private final CommandLineInput commandLineInput;
     private final Method method;
     private final Object[] args;
 
-    public InvocationCommand(CommandLineInput commandLineInput, Method method, Object[] args) {
+    public InvocationRequest(CommandLineInput commandLineInput, Method method, Object[] args) {
         this.commandLineInput = commandLineInput;
         this.method = method;
         this.args = args;

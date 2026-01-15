@@ -4,7 +4,7 @@ import com.nocker.cli.PortScannerContext;
 import com.nocker.cli.formatter.HumanReadableFormatter;
 import com.nocker.portscanner.command.CommandLineInput;
 import com.nocker.portscanner.command.CommandMethod;
-import com.nocker.portscanner.command.InvocationCommand;
+import com.nocker.portscanner.command.InvocationRequest;
 import com.nocker.portscanner.scheduler.PortScanSchedulerFactory;
 import com.nocker.portscanner.scheduler.PortScanSynAckSchedulerFactory;
 import com.nocker.portscanner.wildcard.PortWildcard;
@@ -61,9 +61,9 @@ class PortScannerIT {
                 "nocker scan --host=" + host + " --ports=" + start + "-" + end + " -c 2 -t 50",
                 commandMethod, null, null
         );
-        InvocationCommand invocationCommand = new InvocationCommand(commandLineInput, method, new Object[]{});
-        schedulerFactory = new PortScanSynAckSchedulerFactory(invocationCommand);
-        PortScannerContext cxt = new PortScannerContext.Builder().invocationCommand(invocationCommand)
+        InvocationRequest invocationRequest = new InvocationRequest(commandLineInput, method, new Object[]{});
+        schedulerFactory = new PortScanSynAckSchedulerFactory(invocationRequest);
+        PortScannerContext cxt = new PortScannerContext.Builder().invocationCommand(invocationRequest)
                 .nockerFileWriter(new NockerFileWriter(tempFile.toAbsolutePath().toString()))
                 .outputFormatter(new HumanReadableFormatter()).concurrency(2).timeout(50).robust(false)
                 .syn(false).schedulerFactory(schedulerFactory).build();

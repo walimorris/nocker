@@ -1,7 +1,7 @@
 package com.nocker.cli;
 
 import com.nocker.cli.formatter.OutputFormatter;
-import com.nocker.portscanner.command.InvocationCommand;
+import com.nocker.portscanner.command.InvocationRequest;
 import com.nocker.portscanner.scheduler.PortScanSchedulerFactory;
 import com.nocker.writer.NockerFileWriter;
 import com.nocker.portscanner.PortScanner;
@@ -26,7 +26,7 @@ import com.nocker.portscanner.PortScanner;
  */
 
 public class PortScannerContext {
-    private final InvocationCommand invocationCommand;
+    private final InvocationRequest invocationRequest;
     private final NockerFileWriter nockerFileWriter;
     private final OutputFormatter outputFormatter;
     private final PortScanSchedulerFactory schedulerFactory;
@@ -36,7 +36,7 @@ public class PortScannerContext {
     private final boolean robust;
 
     PortScannerContext(Builder builder) {
-        this.invocationCommand = builder.invocationCommand;
+        this.invocationRequest = builder.invocationRequest;
         this.nockerFileWriter = builder.nockerFileWriter;
         this.outputFormatter = builder.outputFormatter;
         this.schedulerFactory = builder.schedulerFactory;;
@@ -46,8 +46,8 @@ public class PortScannerContext {
         this.robust = builder.robust;
     }
 
-    public InvocationCommand getInvocationCommand() {
-        return invocationCommand;
+    public InvocationRequest getInvocationCommand() {
+        return invocationRequest;
     }
 
     public NockerFileWriter getNockerFileWriter() {
@@ -79,7 +79,7 @@ public class PortScannerContext {
     }
 
     public static class Builder {
-        private InvocationCommand invocationCommand;
+        private InvocationRequest invocationRequest;
         private NockerFileWriter nockerFileWriter;
         private OutputFormatter outputFormatter;
         private PortScanSchedulerFactory schedulerFactory;
@@ -88,8 +88,8 @@ public class PortScannerContext {
         private boolean syn;
         private boolean robust;
 
-        public Builder invocationCommand(InvocationCommand invocationCommand) {
-            this.invocationCommand = invocationCommand;
+        public Builder invocationCommand(InvocationRequest invocationRequest) {
+            this.invocationRequest = invocationRequest;
             return this;
         }
 

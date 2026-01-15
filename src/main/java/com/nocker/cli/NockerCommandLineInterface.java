@@ -8,7 +8,8 @@ import com.nocker.cli.formatter.JsonFormatter;
 import com.nocker.cli.formatter.OutputFormatter;
 import com.nocker.portscanner.PortScanner;
 import com.nocker.portscanner.command.CommandLineInput;
-import com.nocker.portscanner.command.InvocationCommand;
+import com.nocker.portscanner.command.InvocationRequest;
+import com.nocker.portscanner.command.InvocationResponse;
 import com.nocker.portscanner.scheduler.PortScanSynAckSchedulerFactory;
 import com.nocker.writer.NockerFileWriter;
 import org.slf4j.Logger;
@@ -32,13 +33,13 @@ public final class NockerCommandLineInterface {
             // TODO: Sort of missed the boat on other lexical normalizations such as flag formats
             // but that can be refactored from (.parse()) at a later time.
             CommandLineInput commandLineInput = CommandLineInput.parse(args);
-            InvocationCommand invocationCommand = Objects.requireNonNull(CommandEngine.retrieve(commandLineInput),
+            InvocationRequest invocationRequest = Objects.requireNonNull(CommandEngine.retrieve(commandLineInput),
                     "Invocation Command is in legal null state.");
-            String outPath = invocationCommand.getCommandLineInput()
+            String outPath = invocationRequest.getCommandLineInput()
                     .getFlags()
                     .getOrDefault(Flag.OUT.getFullName(), null);
             try (NockerFileWriter nockerFileWriter = outPath != null ? new NockerFileWriter(outPath) : null) {
-                invokeCommand(invocationCommand, nockerFileWriter);
+                invokeCommand(invocationRequest, nockerFileWriter);
             } catch (IOException e) {
                 LOGGER.error("Failed to write output: {}", e.getMessage(), e);
                 return 2;
@@ -51,25 +52,26 @@ public final class NockerCommandLineInterface {
         return 0;
     }
 
-    private static void invokeCommand(InvocationCommand invocationCommand, NockerFileWriter nockerFileWriter) {
-        Map<String, String> flags = invocationCommand.getCommandLineInput().getFlags();
+    private static void invokeCommand(InvocationRequest invocationRequest, NockerFileWriter nockerFileWriter) {
+        Map<String, String> flags = invocationRequest.getCommandLineInput().getFlags();
         int concurrency = initConcurrency(flags);
         int timeout = initTimeout(flags);
         boolean syn = initSneakyLink(flags);
         boolean robust = initRobust(flags);
         OutputFormatter outputFormatter = initOutputFormatter(flags);
         PortScannerContext cxt = new PortScannerContext.Builder()
-                .invocationCommand(invocationCommand).nockerFileWriter(nockerFileWriter)
-                .schedulerFactory(new PortScanSynAckSchedulerFactory(invocationCommand,  concurrency))
+                .invocationCommand(invocationRequest).nockerFileWriter(nockerFileWriter)
+                .schedulerFactory(new PortScanSynAckSchedulerFactory(invocationRequest,  concurrency))
                 .outputFormatter(outputFormatter).concurrency(concurrency).timeout(timeout)
                 .syn(syn).robust(robust).build();
         PortScanner portScanner = new PortScanner(cxt);
         try {
-            invocationCommand.getMethod().invoke(portScanner, invocationCommand.getArgs());
+            String output = InvocationResponse.invoke(invocationRequest, portScanner);
+//            invocationRequest.getMethod().invoke(portScanner, invocationRequest.getArgs());
         } catch (InvocationTargetException | IllegalAccessException exception) {
             LOGGER.error("Error invoking command method [{}#{}] with parameters {}: {}",
-                    invocationCommand.getMethod().getClass().getName(),
-                    invocationCommand.getMethod().getName(), invocationCommand.getMethod().getParameters(),
+                    invocationRequest.getMethod().getClass().getName(),
+                    invocationRequest.getMethod().getName(), invocationRequest.getMethod().getParameters(),
                     exception.getMessage());
         }
     }

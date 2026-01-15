@@ -23,6 +23,16 @@ public class JsonFormatter implements OutputFormatter {
     }
 
     @Override
+    public void write(ScanSummary scanSummary, Appendable appendable) {
+
+    }
+
+    @Override
+    public void write(Object obj, Appendable appendable) {
+
+    }
+
+    @Override
     public void write(Object obj, PrintStream out) {
         String json = CommandLineUtil.jsonify(obj);
         write(json, out);

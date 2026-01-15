@@ -1,7 +1,7 @@
 package com.nocker.command;
 
 import com.nocker.portscanner.command.CommandLineInput;
-import com.nocker.portscanner.command.InvocationCommand;
+import com.nocker.portscanner.command.InvocationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +16,7 @@ public final class CommandEngine {
     }
 
     // retrieve the method
-    public static InvocationCommand retrieve(CommandLineInput cl) {
+    public static InvocationRequest retrieve(CommandLineInput cl) {
         if (cl.getCommand() == null || cl.getCommandMethod() == null || cl.getArguments() == null) {
             throw new IllegalStateException("CommandLineInput cannot be null.");
         }
@@ -24,6 +24,6 @@ public final class CommandEngine {
                 .getNockerParameterNamesAndTypes(cl.getCommandMethod().getMethod());
 
         Object[] commandArgs = ArgumentConverter.convertToObjectArray(currentParameters, cl.getArguments());
-        return new InvocationCommand(cl, cl.getCommandMethod().getMethod(), commandArgs);
+        return new InvocationRequest(cl, cl.getCommandMethod().getMethod(), commandArgs);
     }
 }

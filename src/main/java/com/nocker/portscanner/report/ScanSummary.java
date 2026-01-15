@@ -2,7 +2,7 @@ package com.nocker.portscanner.report;
 
 import com.nocker.OperatingSystemUtils;
 import com.nocker.portscanner.PortState;
-import com.nocker.portscanner.command.InvocationCommand;
+import com.nocker.portscanner.command.InvocationRequest;
 
 import java.util.Map;
 import java.util.Set;
@@ -29,14 +29,14 @@ public class ScanSummary {
     private final AtomicInteger totalPortsScanned;
     private final ConcurrentHashMap<String, Set<Integer>> openHostPorts;
     private final UUID schedulerId;
-    private final InvocationCommand invocationCommand;
+    private final InvocationRequest invocationRequest;
     private final long startTime;
     private long stopTime;
     private final long durationMillis;
 
     private static final String NEW_LINE = "\n";
 
-    public ScanSummary(long startNanos, UUID schedulerId, InvocationCommand command) {
+    public ScanSummary(long startNanos, UUID schedulerId, InvocationRequest command) {
         this(startNanos,
                 schedulerId,
                 command,
@@ -52,7 +52,7 @@ public class ScanSummary {
 
     public ScanSummary(long startNanos,
                        UUID schedulerId,
-                       InvocationCommand command,
+                       InvocationRequest command,
                        long stopTime,
                        long durationMillis,
                        AtomicInteger openPortsCount,
@@ -62,7 +62,7 @@ public class ScanSummary {
                        Map<String, Set<Integer>> openHostPorts) {
         this.startTime = startNanos;
         this.schedulerId = schedulerId;
-        this.invocationCommand = command;
+        this.invocationRequest = command;
         this.stopTime = stopTime;
         this.durationMillis = durationMillis;
         this.openPortsCount = openPortsCount;
@@ -207,16 +207,16 @@ public class ScanSummary {
     }
 
     /**
-     * Retrieves the {@link InvocationCommand} associated with this
-     * scan summary. The {@link InvocationCommand} represents the
+     * Retrieves the {@link InvocationRequest} associated with this
+     * scan summary. The {@link InvocationRequest} represents the
      * command-line input, method, and arguments that were used to
      * initiate the scan process.
      *
-     * @return the {@link InvocationCommand} containing details about
+     * @return the {@link InvocationRequest} containing details about
      * the scan invocation
      */
-    public InvocationCommand getInvocationCommand() {
-        return this.invocationCommand;
+    public InvocationRequest getInvocationCommand() {
+        return this.invocationRequest;
     }
 
     @Override
@@ -237,7 +237,7 @@ public class ScanSummary {
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("Summary for: %s", OperatingSystemUtils.currentUser()))
                 .append(NEW_LINE)
-                .append(String.format("Invocation Command: %s", invocationCommand.getCommandLineInput().getCommand()))
+                .append(String.format("Invocation Command: %s", invocationRequest.getCommandLineInput().getCommand()))
                 .append(NEW_LINE)
                 .append(String.format("Duration: %d", durationMillis()))
                 .append(NEW_LINE)
@@ -273,7 +273,7 @@ public class ScanSummary {
     public SummaryNode toSummaryNode() {
         return new SummaryNode(
                 OperatingSystemUtils.currentUser(),
-                invocationCommand.getCommandLineInput().getCommand(),
+                invocationRequest.getCommandLineInput().getCommand(),
                 durationMillis(),
                 schedulerId,
                 totalPortsScanned.get(),

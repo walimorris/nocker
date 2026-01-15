@@ -3,7 +3,7 @@ package com.nocker.command;
 import com.nocker.portscanner.PortScanner;
 import com.nocker.portscanner.command.CommandLineInput;
 import com.nocker.portscanner.command.CommandMethod;
-import com.nocker.portscanner.command.InvocationCommand;
+import com.nocker.portscanner.command.InvocationRequest;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
@@ -25,14 +25,14 @@ class CommandEngineTest {
             put("port", "8080");
         }};
         CommandLineInput commandLineInput = new CommandLineInput(command, commandMethod, basicScanArgs, null);
-        InvocationCommand expectedInvocationCommand = new InvocationCommand(commandLineInput, basicScanMethod, basicScanObjectArgs);
-        InvocationCommand actualInvocationCommand = CommandEngine.retrieve(commandLineInput);
+        InvocationRequest expectedInvocationRequest = new InvocationRequest(commandLineInput, basicScanMethod, basicScanObjectArgs);
+        InvocationRequest actualInvocationRequest = CommandEngine.retrieve(commandLineInput);
 
-        assertEquals(expectedInvocationCommand.getCommandLineInput(), actualInvocationCommand.getCommandLineInput());
-        assertEquals(expectedInvocationCommand.getMethod(), actualInvocationCommand.getMethod());
-        assertEquals(2, actualInvocationCommand.getArgs().length);
-        assertEquals(expectedInvocationCommand.getArgs()[0], actualInvocationCommand.getArgs()[0]);
-        assertEquals(expectedInvocationCommand.getArgs()[1], String.valueOf(actualInvocationCommand.getArgs()[1]));
+        assertEquals(expectedInvocationRequest.getCommandLineInput(), actualInvocationRequest.getCommandLineInput());
+        assertEquals(expectedInvocationRequest.getMethod(), actualInvocationRequest.getMethod());
+        assertEquals(2, actualInvocationRequest.getArgs().length);
+        assertEquals(expectedInvocationRequest.getArgs()[0], actualInvocationRequest.getArgs()[0]);
+        assertEquals(expectedInvocationRequest.getArgs()[1], String.valueOf(actualInvocationRequest.getArgs()[1]));
     }
 
     @Test

@@ -1,7 +1,7 @@
 package com.nocker.portscanner.scheduler;
 
 import com.nocker.portscanner.PortScanner;
-import com.nocker.portscanner.command.InvocationCommand;
+import com.nocker.portscanner.command.InvocationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,22 +19,22 @@ import org.slf4j.LoggerFactory;
 public class PortScanSynAckSchedulerFactory implements PortScanSchedulerFactory {
     private static final Logger LOGGER = LoggerFactory.getLogger(PortScanSynAckSchedulerFactory.class);
 
-    private final InvocationCommand invocationCommand;
+    private final InvocationRequest invocationRequest;
     private final int concurrency;
 
-    public PortScanSynAckSchedulerFactory(InvocationCommand invocationCommand, int concurrency) {
-        this.invocationCommand = invocationCommand;
+    public PortScanSynAckSchedulerFactory(InvocationRequest invocationRequest, int concurrency) {
+        this.invocationRequest = invocationRequest;
         this.concurrency = concurrency;
     }
 
-    public PortScanSynAckSchedulerFactory(InvocationCommand invocationCommand) {
-        this(invocationCommand, PortScanner.DEFAULT_CONCURRENCY);
+    public PortScanSynAckSchedulerFactory(InvocationRequest invocationRequest) {
+        this(invocationRequest, PortScanner.DEFAULT_CONCURRENCY);
     }
 
     @Override
     public PortScanScheduler create() {
         try {
-            return new PortScanSynAckScheduler(concurrency, invocationCommand);
+            return new PortScanSynAckScheduler(concurrency, invocationRequest);
         } catch (Exception e) {
             LOGGER.error("Error creating PortScanScheduler: {}", e.getMessage());
             throw e;

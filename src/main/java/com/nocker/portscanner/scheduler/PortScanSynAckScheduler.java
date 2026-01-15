@@ -1,6 +1,6 @@
 package com.nocker.portscanner.scheduler;
 
-import com.nocker.portscanner.command.InvocationCommand;
+import com.nocker.portscanner.command.InvocationRequest;
 import com.nocker.portscanner.report.PortScanReport;
 import com.nocker.portscanner.report.PortScanResult;
 import com.nocker.portscanner.PortScanner;
@@ -21,7 +21,7 @@ public class PortScanSynAckScheduler implements PortScanScheduler {
     private final transient CompletionService<List<PortScanResult>> completionService;
     private final int concurrency; // adjustable
     private final UUID schedulerId = UuidUtil.getTimeBasedUuid();
-    private final InvocationCommand invocationCommand;
+    private final InvocationRequest invocationRequest;
 
     private final transient AtomicLong startNanos = new AtomicLong(0);
     private final transient AtomicLong latestStartNanos = new AtomicLong(0);
@@ -29,15 +29,15 @@ public class PortScanSynAckScheduler implements PortScanScheduler {
 
     private static final long serialVersionUID = 1L;
 
-    public PortScanSynAckScheduler(InvocationCommand invocationCommand) {
-        this(PortScanner.DEFAULT_CONCURRENCY, invocationCommand);
+    public PortScanSynAckScheduler(InvocationRequest invocationRequest) {
+        this(PortScanner.DEFAULT_CONCURRENCY, invocationRequest);
     }
 
-    public PortScanSynAckScheduler(int concurrency, InvocationCommand invocationCommand) {
+    public PortScanSynAckScheduler(int concurrency, InvocationRequest invocationRequest) {
          this.concurrency = concurrency;
          this.executorService = Executors.newFixedThreadPool(concurrency);
          this.completionService = new ExecutorCompletionService<>(executorService);
-         this.invocationCommand = invocationCommand;
+         this.invocationRequest = invocationRequest;
     }
 
     @Override
@@ -50,7 +50,7 @@ public class PortScanSynAckScheduler implements PortScanScheduler {
     @Override
     public PortScanReport shutdownAndCollect(AtomicInteger taskCount) {
         List<PortScanResult> results = new ArrayList<>();
-        ScanSummary scanSummary = new ScanSummary(startNanos.get(), schedulerId, invocationCommand);
+        ScanSummary scanSummary = new ScanSummary(startNanos.get(), schedulerId, invocationRequest);
         try {
             for (int i = 0; i < taskCount.get(); i++) {
                 Future<List<PortScanResult>> future = completionService.
@@ -116,8 +116,8 @@ public class PortScanSynAckScheduler implements PortScanScheduler {
     }
 
     @Override
-    public InvocationCommand getInvocationCommand() {
-        return invocationCommand;
+    public InvocationRequest getInvocationCommand() {
+        return invocationRequest;
     }
 
     @Override
