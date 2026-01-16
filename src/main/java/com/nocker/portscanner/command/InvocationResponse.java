@@ -8,6 +8,7 @@ public class InvocationResponse {
 
     private InvocationResponse() {}
 
+    // TODO: validate the request
     public static String invoke(InvocationRequest invocationRequest, PortScanner portScanner) throws InvocationTargetException, IllegalAccessException {
         if (invocationRequest == null || portScanner == null) {
             throw new IllegalArgumentException("Must supply valid request and port scanner");
