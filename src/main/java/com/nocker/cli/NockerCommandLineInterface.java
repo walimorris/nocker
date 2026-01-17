@@ -67,7 +67,7 @@ public final class NockerCommandLineInterface {
         PortScanner portScanner = new PortScanner(cxt);
         try {
             String output = InvocationResponse.invoke(invocationRequest, portScanner);
-//            invocationRequest.getMethod().invoke(portScanner, invocationRequest.getArgs());
+            System.out.println(output);
         } catch (InvocationTargetException | IllegalAccessException exception) {
             LOGGER.error("Error invoking command method [{}#{}] with parameters {}: {}",
                     invocationRequest.getMethod().getClass().getName(),
@@ -95,7 +95,7 @@ public final class NockerCommandLineInterface {
     }
 
     private static OutputFormatter initOutputFormatter(Map<String, String> flags) {
-        String format = flags.getOrDefault(FORMAT.getFullName(), "json");
+        String format = flags.getOrDefault(FORMAT.getFullName(), "txt");
         if (format.equals("txt")) {
             return new HumanReadableFormatter();
         }

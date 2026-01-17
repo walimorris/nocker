@@ -149,7 +149,7 @@ public class PortScanner {
 
     @Scan
     public String scan(@Hosts List<String> hosts, @Port int port) {
-        Map<PortScanReport, HostIdentity> reports = new LinkedHashMap<>();
+        LinkedHashMap<PortScanReport, HostIdentity> reports = new LinkedHashMap<>();
         for (String host : hosts) {
             HostIdentity hostIdentity = getHostIdentity(host);
             if (hostIdentity != null) {
@@ -159,11 +159,7 @@ public class PortScanner {
                 }
             }
         }
-        StringBuilder builder = new StringBuilder();
-        for (Map.Entry<PortScanReport, HostIdentity> entry : reports.entrySet()) {
-            builder.append(triggerResponse(entry.getKey(), entry.getValue())).append("\n");
-        }
-        return builder.toString();
+        return doGetOutput(reports);
     }
 
     @Scan
@@ -176,7 +172,7 @@ public class PortScanner {
                 return triggerResponse(report, hostIdentity);
             }
         }
-        return "null";
+        return "no output.";
     }
 
     private PortScanReport singleHostAndSinglePortScan(HostIdentity hostIdentity, int port) {
@@ -218,17 +214,13 @@ public class PortScanner {
     @Scan
     public String scan(@Hosts List<String> hosts) {
         List<PortScanScheduler> schedulers = spawnSchedulers(hosts.size());
-        Map<PortScanReport, HostIdentity> reports = new LinkedHashMap<>();
+        LinkedHashMap<PortScanReport, HostIdentity> reports = new LinkedHashMap<>();
         for (int i = 0; i < hosts.size(); i++) {
             HostIdentity hostIdentity = getHostIdentity(hosts.get(i));
             PortScanScheduler scheduler = schedulers.get(i % schedulers.size());
             reports.put(singleHostScan(hostIdentity, scheduler), hostIdentity);
         }
-        StringBuilder builder = new StringBuilder();
-        for (Map.Entry<PortScanReport, HostIdentity> entry : reports.entrySet()) {
-            builder.append(triggerResponse(entry.getKey(), entry.getValue())).append("\n");
-        }
-        return builder.toString();
+        return doGetOutput(reports);
     }
 
     // BEWARE: this scans all valid ports on a single host
@@ -243,7 +235,7 @@ public class PortScanner {
                 return triggerResponse(report, hostIdentity);
             }
         }
-        return "null";
+        return "no output.";
     }
 
     private PortScanReport singleHostScan(HostIdentity hostIdentity, PortScanScheduler scheduler) {
@@ -287,7 +279,7 @@ public class PortScanner {
                 return triggerResponse(report, hostIdentity);
             }
         }
-        return "null";
+        return "no output.";
     }
 
     // scan logic complete
@@ -297,7 +289,7 @@ public class PortScanner {
         if (hostIdentity == null) {
             // notify
             LOGGER.warn("Cannot scan nonexistent host: {}", host);
-            return "null";
+            return "no output.";
         }
         if (ObjectUtils.isNotEmpty(hostIdentity.getHostInet4Address())) {
             int batchSize = getBatchSize(hostIdentity.getHostInet4Address());
@@ -309,7 +301,7 @@ public class PortScanner {
             return triggerResponse(report, hostIdentity);
         } else {
             PortScannerUtil.logInvalidHost(host);
-            return "null";
+            return "no output.";
         }
     }
 
@@ -446,11 +438,6 @@ public class PortScanner {
         }
     }
 
-    private void triggerResponse(List<PortScanResult> results, HostIdentity hostIdentity) {
-        HostModel hostModel = responseWithHostModel(results, hostIdentity);
-        doShowOutput(hostModel);
-    }
-
     private HostModel responseWithHostModel(PortScanScheduler scanScheduler, List<PortScanResult> results, HostIdentity hostIdentity) {
         return new HostModel.Builder()
                 .schedulerId(scanScheduler.getSchedulerId())
@@ -493,11 +480,6 @@ public class PortScanner {
         }
     }
 
-    private void doShowOutput(Object obj) {
-        outputFormatter.write(obj, System.out);
-        writeToFile(obj);
-    }
-
     private void doShowOutput(List<?> listObject) {
         outputFormatter.write(listObject, System.out);
         writeToFile(listObject);
@@ -520,6 +502,14 @@ public class PortScanner {
         outputFormatter.write(scanSummary, stringBuilder);
         writeToFile(scanSummary);
         return stringBuilder.toString();
+    }
+
+    private String doGetOutput(LinkedHashMap<PortScanReport, HostIdentity> reports) {
+        StringBuilder builder = new StringBuilder();
+        for (Map.Entry<PortScanReport, HostIdentity> entry : reports.entrySet()) {
+            builder.append(triggerResponse(entry.getKey(), entry.getValue())).append("\n");
+        }
+        return builder.toString();
     }
 
     /**
